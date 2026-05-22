@@ -27,6 +27,8 @@ const UNSUPPORTED_MESSAGE =
 const CAMERA_ERROR_TITLE = "카메라를 켤 수 없어요";
 const CAMERA_ERROR_HINT =
   "카메라 엑세스 허용 후 이 화면으로 돌아오면 자동으로 다시 연결합니다.";
+/** 도서관 등 조용한 환경을 위해 비프만 끄는 설정. 진동/시각 피드백은 유지. */
+const SOUND_MUTED_STORAGE_KEY = "book-scanner:settings:sound-muted";
 const BARCODE_FORMATS = [
   "ean_13",
   "ean_8",
@@ -162,6 +164,30 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   const [cameraRetryToken, setCameraRetryToken] = useState(0);
   const [debugInfoOpen, setDebugInfoOpen] = useState(false);
   const [sessionEditMode, setSessionEditMode] = useState(false);
+  const [soundMuted, setSoundMuted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setSoundMuted(window.localStorage.getItem(SOUND_MUTED_STORAGE_KEY) === "1");
+    } catch {
+      /* private mode 등 — 기본값 유지 */
+    }
+  }, []);
+
+  const toggleSoundMuted = useCallback(() => {
+    setSoundMuted((prev) => {
+      const next = !prev;
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(SOUND_MUTED_STORAGE_KEY, next ? "1" : "0");
+        }
+      } catch {
+        /* 저장 실패해도 런타임 상태는 토글된다 */
+      }
+      return next;
+    });
+  }, []);
 
   const inSession = activeSessionKey !== null;
   const totalBooks = countSessionLines(liveSessionText);
@@ -284,14 +310,24 @@ export default function Scanner({ onExitSession }: ScannerProps) {
     };
   }, []);
 
+  const maybePlaySuccess = useCallback(() => {
+    if (soundMuted) return;
+    playSuccess();
+  }, [playSuccess, soundMuted]);
+
+  const maybePlayFailure = useCallback(() => {
+    if (soundMuted) return;
+    playFailure();
+  }, [playFailure, soundMuted]);
+
   const triggerFeedback = useCallback(
     (digits: string) => {
-      playSuccess();
+      maybePlaySuccess();
       void vibrateOnSuccess();
       setFlashKey(Date.now());
       showToast(`기록했어요: ${digits}`, "success", 1500);
     },
-    [playSuccess, showToast, vibrateOnSuccess]
+    [maybePlaySuccess, showToast, vibrateOnSuccess]
   );
 
   const handleDecoded = useCallback(
@@ -302,7 +338,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
         const now = Date.now();
         if (now - lastInvalidBeepAt.current >= INVALID_BEEP_COOLDOWN_MS) {
           lastInvalidBeepAt.current = now;
-          playFailure();
+          maybePlayFailure();
           showToast("숫자가 아니에요. 넘어갔어요.", "info", 1400);
         }
         return;
@@ -319,7 +355,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
         showToast(`이미 방금 기록한 번호예요: ${trimmed}`, "info", 1400);
       }
     },
-    [appendDigitScanToActiveSession, playFailure, showToast, triggerFeedback]
+    [appendDigitScanToActiveSession, maybePlayFailure, showToast, triggerFeedback]
   );
 
   const retryCamera = useCallback(() => {
@@ -651,6 +687,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                     aria-haspopup="dialog"
                     aria-expanded={debugInfoOpen}
                     aria-controls="scan-debug-info-dialog"
+                    aria-label="기기 정보 · 소리 설정 열기"
                     onClick={() => setDebugInfoOpen(true)}
                     className="flex min-h-14 min-w-14 items-center justify-center rounded-2xl border border-zinc-600/90 bg-zinc-900 text-base font-bold italic text-zinc-300 active:bg-zinc-800"
                   >
@@ -870,9 +907,42 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               id="scan-debug-info-title"
               className="text-center text-lg font-semibold text-white"
             >
-              디버그 정보
+              기기 정보 · 소리 설정
             </h2>
-            <p className="mt-3 text-[11px] text-zinc-300">
+
+            <button
+              type="button"
+              onClick={toggleSoundMuted}
+              role="switch"
+              aria-checked={soundMuted}
+              className={`mt-4 flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition active:scale-[0.99] ${
+                soundMuted
+                  ? "border-amber-600/70 bg-amber-950/40"
+                  : "border-zinc-600 bg-zinc-800/80"
+              }`}
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-zinc-100">
+                  스캔 소리
+                </span>
+                <span className="mt-0.5 block text-[11px] text-zinc-400">
+                  도서관처럼 조용한 곳에서는 끄세요. 진동·화면 표시는 그대로
+                  유지돼요.
+                </span>
+              </span>
+              <span
+                aria-hidden
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
+                  soundMuted
+                    ? "bg-amber-500/80 text-amber-950"
+                    : "bg-emerald-500/80 text-emerald-950"
+                }`}
+              >
+                {soundMuted ? "꺼짐" : "켜짐"}
+              </span>
+            </button>
+
+            <p className="mt-5 text-[11px] text-zinc-300">
               브라우저: {clientInfo.browser}
             </p>
             <p className="mt-1 text-[11px] text-zinc-300">OS: {clientInfo.os}</p>
