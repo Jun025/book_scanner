@@ -11,6 +11,7 @@ import {
 import AppFooter from "@/components/AppFooter";
 import AppHeader from "@/components/AppHeader";
 import ClipboardIcon from "@/components/ClipboardIcon";
+import OnlineStatusBanner from "@/components/OnlineStatusBanner";
 import Scanner from "@/components/Scanner";
 import {
   countSessionLines,
@@ -257,6 +258,7 @@ export default function Home() {
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100">
       <AppHeader />
+      <OnlineStatusBanner />
 
       <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-5 pb-4 pt-2">
         {adminView === "main" && (

@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import AppHeader from "@/components/AppHeader";
+import OnlineStatusBanner from "@/components/OnlineStatusBanner";
 import { useScanBeeps } from "@/hooks/useScanBeeps";
 import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
 import { countSessionLines } from "@/lib/sessionText";
@@ -684,10 +685,10 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                   <button
                     type="button"
                     id="scan-debug-info-trigger"
+                    aria-label="기기 정보 · 소리 설정 열기"
                     aria-haspopup="dialog"
                     aria-expanded={debugInfoOpen}
                     aria-controls="scan-debug-info-dialog"
-                    aria-label="기기 정보 · 소리 설정 열기"
                     onClick={() => setDebugInfoOpen(true)}
                     className="flex min-h-14 min-w-14 items-center justify-center rounded-2xl border border-zinc-600/90 bg-zinc-900 text-base font-bold italic text-zinc-300 active:bg-zinc-800"
                   >
@@ -703,6 +704,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                 </>
               }
             />
+            <OnlineStatusBanner />
 
             <div
               className="shrink-0 border-b border-zinc-800/80 bg-zinc-950/90 px-4 py-2 backdrop-blur-sm"
