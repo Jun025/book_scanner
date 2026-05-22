@@ -9,6 +9,7 @@ import {
 } from "react";
 import AppHeader from "@/components/AppHeader";
 import { useScanBeeps } from "@/hooks/useScanBeeps";
+import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
 import { countSessionLines } from "@/lib/sessionText";
 import { useScannerStore } from "@/store/useScannerStore";
 
@@ -160,6 +161,9 @@ export default function Scanner({ onExitSession }: ScannerProps) {
 
   const inSession = activeSessionKey !== null;
   const totalBooks = countSessionLines(liveSessionText);
+
+  /** 카메라가 실제로 동작 중일 때만 화면 꺼짐 방지(서가에서 장시간 스캔 마찰 해소) */
+  useScreenWakeLock(inSession && mode === "camera");
 
   useEffect(() => {
     if (!inSession) setSessionEditMode(false);
