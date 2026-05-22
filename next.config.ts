@@ -1,4 +1,6 @@
+import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -7,8 +9,7 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
 });
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   async headers() {
     return [
       {
@@ -25,3 +26,5 @@ const nextConfig = {
 };
 
 export default withPWA(nextConfig);
+
+initOpenNextCloudflareForDev();

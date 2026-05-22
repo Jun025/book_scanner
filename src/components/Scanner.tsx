@@ -118,6 +118,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   const activeSessionKey = useScannerStore((s) => s.activeSessionKey);
   const endInventorySession = useScannerStore((s) => s.endInventorySession);
   const liveSessionText = useScannerStore((s) => s.liveSessionText);
+  const setLiveSessionText = useScannerStore((s) => s.setLiveSessionText);
   const appendDigitScanToActiveSession = useScannerStore(
     (s) => s.appendDigitScanToActiveSession
   );
@@ -155,16 +156,37 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   const [toast, setToast] = useState<string | null>(null);
   const [cameraRetryToken, setCameraRetryToken] = useState(0);
   const [debugInfoOpen, setDebugInfoOpen] = useState(false);
+  const [sessionEditMode, setSessionEditMode] = useState(false);
 
   const inSession = activeSessionKey !== null;
   const totalBooks = countSessionLines(liveSessionText);
 
+  useEffect(() => {
+    if (!inSession) setSessionEditMode(false);
+  }, [inSession]);
+
   useLayoutEffect(() => {
-    if (!inSession) return;
+    if (!inSession || sessionEditMode) return;
     const el = sessionTextareaRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [inSession, liveSessionText]);
+  }, [inSession, liveSessionText, sessionEditMode]);
+
+  const enterSessionEditMode = useCallback(() => {
+    setSessionEditMode(true);
+    requestAnimationFrame(() => {
+      const el = sessionTextareaRef.current;
+      if (!el) return;
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    });
+  }, []);
+
+  const exitSessionEditMode = useCallback(() => {
+    setSessionEditMode(false);
+    sessionTextareaRef.current?.blur();
+  }, []);
 
   useEffect(() => {
     if (!inSession) return;
@@ -607,22 +629,22 @@ export default function Scanner({ onExitSession }: ScannerProps) {
             />
 
             <div
-              className="shrink-0 border-b border-zinc-800/80 bg-zinc-950/90 px-4 py-3 backdrop-blur-sm"
+              className="shrink-0 border-b border-zinc-800/80 bg-zinc-950/90 px-4 py-2 backdrop-blur-sm"
               aria-live="polite"
             >
-              <div className="mb-3 flex flex-col items-center border-b border-zinc-800/50 pb-3">
+              <div className="mb-2 flex flex-col items-center border-b border-zinc-800/50 pb-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                   지금까지 점검
                 </p>
                 {lastCaptureAt > 0 ? (
                   <p
                     key={`total-${lastCaptureAt}`}
-                    className="scan-total-hit mt-1 text-2xl font-bold tabular-nums sm:text-3xl"
+                    className="scan-total-hit mt-1 text-xl font-bold tabular-nums sm:text-2xl"
                   >
                     총 <span className="tabular-nums">{totalBooks}</span>권
                   </p>
                 ) : (
-                  <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-400 sm:text-3xl">
+                  <p className="mt-1 text-xl font-bold tabular-nums text-zinc-400 sm:text-2xl">
                     총 <span className="tabular-nums">{totalBooks}</span>권
                   </p>
                 )}
@@ -633,7 +655,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               {lastCapturedCode ? (
                 <p
                   key={`code-${lastCaptureAt}`}
-                  className="scan-live-code-hit mt-1 break-all text-center text-3xl font-bold tabular-nums tracking-tight text-emerald-300 sm:text-4xl"
+                  className="scan-live-code-hit mt-1 break-all text-center text-2xl font-bold tabular-nums tracking-tight text-emerald-300 sm:text-3xl"
                 >
                   {lastCapturedCode}
                 </p>
@@ -648,7 +670,11 @@ export default function Scanner({ onExitSession }: ScannerProps) {
 
             <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               {showCameraArea && (
-                <div className="relative z-20 min-h-[48dvh] w-full min-w-0 flex-1 overflow-hidden">
+                <div
+                  className={`relative z-20 w-full min-w-0 flex-1 overflow-hidden ${
+                    sessionEditMode ? "min-h-[38dvh]" : "min-h-[44dvh]"
+                  }`}
+                >
                   <canvas ref={frameCanvasRef} className="hidden" aria-hidden />
                   <video
                     ref={videoRef}
@@ -710,7 +736,11 @@ export default function Scanner({ onExitSession }: ScannerProps) {
 
       {toast && (
         <div
-          className="pointer-events-none fixed bottom-[min(34vh,300px)] left-2 right-2 z-[90] mx-auto max-w-md rounded-xl border border-emerald-500/40 bg-emerald-950/95 px-3 py-2 text-center text-sm text-emerald-100 shadow-lg"
+          className={`pointer-events-none fixed left-2 right-2 z-[90] mx-auto max-w-md rounded-xl border border-emerald-500/40 bg-emerald-950/95 px-3 py-2 text-center text-sm text-emerald-100 shadow-lg ${
+            sessionEditMode
+              ? "bottom-[min(42vh,360px)]"
+              : "bottom-[min(34vh,300px)]"
+          }`}
           role="status"
         >
           {toast}
@@ -719,30 +749,61 @@ export default function Scanner({ onExitSession }: ScannerProps) {
 
       {inSession && (
         <div className="relative z-40 shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-          <div className="mb-1.5">
-            <label
-              htmlFor="scan-session-textarea"
-              className="block text-xs font-semibold uppercase tracking-wide text-zinc-400"
-            >
-              이번 점검 기록
-            </label>
-            <p className="mt-0.5 text-[10px] leading-snug text-zinc-500">
-              찍힌 번호만 아래에 쌓여요. 수정·복사는{" "}
-              <span className="text-zinc-400">지난 점검 기록</span>에서 할 수
-              있어요.
-            </p>
+          <div className="mb-1.5 flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <label
+                htmlFor="scan-session-textarea"
+                className="block text-xs font-semibold uppercase tracking-wide text-zinc-400"
+              >
+                이번 점검 기록
+              </label>
+              <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+                바코드 {totalBooks}권
+              </p>
+            </div>
+            {sessionEditMode ? (
+              <button
+                type="button"
+                onClick={exitSessionEditMode}
+                className="flex min-h-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-600/80 bg-emerald-900/60 px-4 text-sm font-semibold text-emerald-100 active:bg-emerald-900"
+              >
+                완료
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={enterSessionEditMode}
+                className="flex min-h-12 shrink-0 items-center justify-center rounded-2xl border border-zinc-600 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 active:bg-zinc-800"
+              >
+                직접 수정
+              </button>
+            )}
           </div>
+          <p className="mb-1.5 text-[10px] leading-snug text-zinc-500">
+            {sessionEditMode
+              ? "한 줄에 번호 하나. 잘못 찍힌 줄은 지우거나 고쳐 주세요."
+              : "찍힌 번호가 아래에 쌓여요. 고치려면 직접 수정을 눌러 주세요."}
+          </p>
           <textarea
             ref={sessionTextareaRef}
             id="scan-session-textarea"
             value={liveSessionText}
-            readOnly
-            aria-readonly="true"
+            readOnly={!sessionEditMode}
+            aria-readonly={sessionEditMode ? undefined : "true"}
+            onChange={
+              sessionEditMode
+                ? (e) => setLiveSessionText(e.target.value)
+                : undefined
+            }
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"
-            tabIndex={-1}
-            className="min-h-[6.5rem] max-h-[22dvh] w-full cursor-default resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-2.5 py-2 font-mono text-sm leading-relaxed text-zinc-100 tabular-nums outline-none sm:min-h-[7rem] sm:text-base"
+            tabIndex={sessionEditMode ? 0 : -1}
+            className={`w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-2.5 py-2 font-mono text-sm leading-relaxed text-zinc-100 tabular-nums outline-none sm:text-base ${
+              sessionEditMode
+                ? "min-h-[12rem] max-h-[36dvh] ring-emerald-500/30 focus:ring-2"
+                : "min-h-[8rem] max-h-[26dvh] cursor-default"
+            }`}
           />
         </div>
       )}

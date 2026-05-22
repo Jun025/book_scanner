@@ -146,7 +146,7 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
     const { activeSessionKey } = get();
     if (!activeSessionKey) return;
     writeSessionRaw(activeSessionKey, text);
-    set({ liveSessionText: text });
+    set({ liveSessionText: text, _lastAccepted: null });
   },
 
   appendDigitScanToActiveSession: (raw) => {

@@ -12,7 +12,7 @@
 - **메인 정리** — 메인으로 들어올 때 바코드 0건인 세션은 `removeSessionKeysWithZeroBarcodes()`로 제거 후 건수·목록 반영.
 - **첫 화면 뒤로가기** — 히스토리 루트에서 뒤로가기 시 확인 없이 앱 이탈 시퀀스 실행.
 - **지난 점검 기록** — 목록에서 항목을 열어 상세의 textarea로 조회·수정·삭제. **클립보드 복사는 상세에서만**(목록 행·점검 중 화면에서는 복사 없음).
-- **점검 중 표시** — 하단 누적 줄은 읽기 전용(스캔으로만 갱신), 스캔 추가 시 **자동으로 맨 아래로 스크롤**.
+- **점검 중 표시** — 하단 누적은 보기 모드 기본(스캔으로 갱신·맨 아래 자동 스크롤). **직접 수정** 토글로 textarea 편집·즉시 `localStorage` 저장. 복사는 **지난 점검 상세**만.
 - **연속 스캔** — 세션 유지 중 바코드만 비추면 반복 인식(별도 셔터 없음).
 - **검증** — 스캔 UI에서 `trim` 후 **`/^\d{5,13}$/`** 만 합의·저장 후보로 사용. 스토어에서 **`/^\d+$/`** 재검증 및 **동일 코드 ~2초 쿨다운**.
 - **오인식 방지** — 유효 코드가 2회 연속 동일할 때만 확정 저장(멀티 프레임 합의).
@@ -56,7 +56,7 @@ pnpm start
 
 - `src/app/layout.tsx` — 폰트·viewport·PWA 메타
 - `src/app/page.tsx` — 메인·지난 점검 목록/상세·스캔 모드 전환, 히스토리·뒤로가기·클립보드(상세만)
-- `src/components/Scanner.tsx` — 카메라/목업, 라이브 패널, 읽기 전용 누적, 토스트, 비프
+- `src/components/Scanner.tsx` — 카메라/목업, 라이브 패널, 누적 보기·직접 수정 토글, 토스트, 비프
 - `src/components/AppHeader.tsx` / `AppFooter.tsx` — 공통 헤더, 푸터(인스타 링크 등)
 - `src/store/useScannerStore.ts` — 세션 생명주기, `localStorage` append/동기, 세션 키·빈 세션 정리
 - `src/hooks/useScanBeeps.ts` — 스캔 성공/실패 톤
@@ -66,25 +66,59 @@ pnpm start
 
 자세한 요구·로드맵은 [PRD.md](./PRD.md)를 참고하세요.
 
-## 배포 (Vercel)
+## 배포 (Cloudflare Pages)
 
-프로덕션 빌드에서 PWA 플러그인이 서비스 워커를 생성합니다.
+이 프로젝트는 `@opennextjs/cloudflare` 기반으로 Cloudflare Pages(Workers 런타임) 배포를 사용합니다.
 
-### `main` 푸시 시 자동 배포 (권장)
+### 1) 사전 준비
 
-수동으로 Deployments에서 “Create Deployment” 할 필요 없이, **Git 저장소만 Vercel에 연결**하면 `main`에 푸시할 때마다 프로덕션 배포가 자동으로 진행됩니다.
+1. Cloudflare 계정과 Pages 프로젝트를 생성합니다.
+2. 로컬에서 Cloudflare 인증을 완료합니다.
 
-1. [Vercel 대시보드](https://vercel.com/dashboard) → **Add New…** → **Project** (또는 기존 프로젝트 선택).
-2. **Import Git Repository**에서 이 저장소(GitHub/GitLab/Bitbucket)를 선택하고 **Import**합니다.  
-   - 이미 프로젝트만 있고 Git이 비어 있다면: 해당 프로젝트 **Settings** → **Git** → **Connect Git Repository**로 같은 작업을 합니다.
-3. Framework Preset이 **Next.js**로 잡혀 있는지 확인하고 **Deploy**를 누릅니다.
-4. 이후 **`main` 브랜치에 push(또는 merge)** 할 때마다 Vercel이 자동으로 빌드·배포합니다. Production Branch는 기본값이 `main`입니다 (**Settings** → **Git** → **Production Branch**).
+```bash
+pnpm dlx wrangler login
+```
 
-별도 GitHub Actions 없이 위 연결만으로 `main` 푸시 → 자동 배포가 완료됩니다.
+### 2) Pages 빌드 설정
 
-### 참고
+Cloudflare Pages에서 이 저장소를 연결한 뒤, Build 설정을 아래처럼 지정합니다.
 
-조직 정책 등으로 Vercel–Git 연결이 불가하고 CI에서만 배포해야 한다면, Vercel 문서의 **“Deploying with GitHub Actions”**를 따라 저장소 시크릿과 워크플로를 직접 구성하면 됩니다. 일반적인 경우는 위 Git 연결이 가장 단순합니다.
+- Framework preset: `None`
+- Build command: `pnpm opennextjs-cloudflare build`
+- Build output directory: `.open-next/assets`
+
+OpenNext 빌드 결과(`.open-next/worker.js`)가 서버 렌더링/라우트 처리를 담당하고, 정적 파일은 `.open-next/assets`에서 서빙됩니다.
+
+### 3) 필요한 설정 파일
+
+프로젝트 루트에 `wrangler.jsonc`가 없다면 생성합니다.
+
+```jsonc
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "book-scanner",
+  "compatibility_date": "2024-12-30",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  }
+}
+```
+
+### 4) 배포 워크플로
+
+1. `main` 브랜치에 push/merge 합니다.
+2. Cloudflare Pages가 자동으로 `pnpm opennextjs-cloudflare build`를 실행합니다.
+3. 빌드가 끝나면 새 배포가 생성됩니다.
+
+로컬에서 Workers 런타임으로 미리 확인하려면 아래 명령을 사용합니다.
+
+```bash
+pnpm opennextjs-cloudflare build
+pnpm wrangler dev
+```
 
 ## 참고
 
