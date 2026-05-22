@@ -10,6 +10,15 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  // Vercel 등 2코어 CI에서 jest-worker EPIPE 완화
+  ...(process.env.VERCEL
+    ? {
+        experimental: {
+          cpus: 1,
+          webpackBuildWorker: false,
+        },
+      }
+    : {}),
   async headers() {
     return [
       {
@@ -27,4 +36,7 @@ const nextConfig: NextConfig = {
 
 export default withPWA(nextConfig);
 
-initOpenNextCloudflareForDev();
+// Cloudflare 로컬 dev 전용 — Vercel/프로덕션 next build에서 Wrangler 기동 시 EPIPE 발생 방지
+if (process.env.NODE_ENV === "development") {
+  void initOpenNextCloudflareForDev();
+}
