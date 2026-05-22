@@ -35,6 +35,11 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  /* 학교 내부용 도구이므로 검색엔진 색인 대상이 아님 */
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({

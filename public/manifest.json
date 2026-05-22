@@ -2,12 +2,15 @@
   "name": "빛나래 장서점검",
   "short_name": "빛나래 장서",
   "description": "동대부가람고 도서부 빛나래 장서점검. 바코드 즉시 저장, 세션별 클립보드 복사. 오프라인에서도 기록 유지.",
+  "lang": "ko",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0c0c0e",
   "theme_color": "#0f766e",
   "orientation": "portrait-primary",
+  "categories": ["productivity", "education", "utilities"],
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
