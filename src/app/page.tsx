@@ -263,17 +263,17 @@ export default function Home() {
       <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-5 pb-4 pt-2">
         {adminView === "main" && (
           <section className="flex min-h-0 flex-1 flex-col">
-            <div className="rounded-3xl border border-amber-500/15 bg-linear-to-b from-zinc-900 via-zinc-900/95 to-zinc-950 p-6 shadow-2xl shadow-black/30 ring-1 ring-emerald-900/20">
+            <div className="rounded-3xl border border-amber-500/15 bg-linear-to-b from-zinc-900 via-zinc-900/95 to-zinc-950 p-5 shadow-2xl shadow-black/30 ring-1 ring-emerald-900/20 sm:p-6">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400/90">
                 {CLUB_NAME}
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+              <p className="mt-1 text-xs leading-relaxed text-zinc-400">
                 {SCHOOL_NAME}
               </p>
               <h2 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
                 장서점검 안내
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+              <p className="mt-2 text-sm leading-relaxed text-zinc-300">
                 사서교사 민경 선생님과 함께 도서관을 돌보며, 빛나래 동아리
                 활동으로 장서를 점검할 때 쓰는 도구예요. 바코드(숫자)를 찍을
                 때마다 이 기기에 바로 쌓이고, 진행 방법이 헷갈리면 항상 선생님께
@@ -283,34 +283,34 @@ export default function Home() {
             </div>
 
             <div
-              className="mt-5 rounded-2xl border border-zinc-800/90 bg-zinc-900/50 px-4 py-4"
+              className="mt-4 rounded-2xl border border-zinc-800/90 bg-zinc-900/50 px-4 py-3 sm:py-4"
               aria-label="이용 안내"
             >
-              <p className="text-xs font-semibold text-zinc-300">
+              <p className="text-xs font-semibold text-zinc-200">
                 이렇게 쓰면 편해요
               </p>
-              <ul className="mt-2 space-y-2 text-xs leading-relaxed text-zinc-500">
+              <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-zinc-300">
                 <li className="flex gap-2">
-                  <span className="shrink-0 text-emerald-500/90" aria-hidden>
+                  <span className="shrink-0 text-emerald-400" aria-hidden>
                     ·
                   </span>
                   <span>
                     첫 화면에서는 카메라가 꺼져 있어요.{" "}
-                    <span className="text-zinc-400">장서점검 시작</span>을 누른
+                    <span className="text-zinc-100">장서점검 시작</span>을 누른
                     뒤에만 켜져요.
                   </span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="shrink-0 text-emerald-500/90" aria-hidden>
+                  <span className="shrink-0 text-emerald-400" aria-hidden>
                     ·
                   </span>
                   <span>
-                    저장되는 건 <span className="text-zinc-400">숫자만</span>{" "}
+                    저장되는 건 <span className="text-zinc-100">숫자만</span>{" "}
                     있는 바코드예요. (QR·글자 섞인 코드는 넘어가요.)
                   </span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="shrink-0 text-emerald-500/90" aria-hidden>
+                  <span className="shrink-0 text-emerald-400" aria-hidden>
                     ·
                   </span>
                   <span>
@@ -321,7 +321,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={startWork}
@@ -358,7 +358,7 @@ export default function Home() {
                 <h2 className="truncate text-base font-semibold text-zinc-100">
                   세션 관리 · 지난 점검
                 </h2>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-zinc-400">
                   항목을 눌러 보기·편집·복사
                 </p>
               </div>
@@ -366,9 +366,9 @@ export default function Home() {
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {sessionKeys.length === 0 ? (
-                <p className="px-4 py-6 text-sm leading-relaxed text-zinc-500">
+                <p className="px-4 py-6 text-sm leading-relaxed text-zinc-300">
                   아직 저장된 점검이 없어요.{" "}
-                  <span className="text-zinc-400">장서점검 시작</span>으로
+                  <span className="text-zinc-100">장서점검 시작</span>으로
                   한 번 점검해 보면 여기에 날짜별로 쌓여요.
                 </p>
               ) : (
@@ -385,7 +385,7 @@ export default function Home() {
                           <span className="text-sm font-semibold text-zinc-100">
                             {formatSessionLabel(key)}
                           </span>
-                          <span className="text-xs text-zinc-500">
+                          <span className="text-xs text-zinc-400">
                             바코드 {countSessionLines(raw)}권
                           </span>
                         </button>
@@ -412,7 +412,7 @@ export default function Home() {
                 <h2 className="truncate text-sm font-semibold text-zinc-100">
                   {formatSessionLabel(selectedKey)}
                 </h2>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-zinc-400">
                   바코드 {selectedCount}권
                 </p>
               </div>
@@ -449,7 +449,7 @@ export default function Home() {
               </button>
             </div>
             <div className="min-h-0 flex-1 px-4 pb-4">
-              <p className="mb-2 text-xs leading-relaxed text-zinc-500">
+              <p className="mb-2 text-xs leading-relaxed text-zinc-400">
                 선생님이 정한 방식대로 붙여 넣거나 수정해요. 한 줄에 번호 하나씩이면
                 복사하기 편해요.
               </p>

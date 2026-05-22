@@ -738,9 +738,9 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                   {lastCapturedCode}
                 </p>
               ) : (
-                <p className="mt-1 text-center text-sm leading-snug text-zinc-500">
+                <p className="mt-1 text-center text-sm leading-snug text-zinc-300">
                   아직 없어요. 책등·바코드가{" "}
-                  <span className="text-zinc-400">숫자만</span> 보이게 비춰
+                  <span className="text-zinc-100">숫자만</span> 보이게 비춰
                   주세요.
                 </p>
               )}
@@ -790,7 +790,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                         <h2 className="text-center text-lg font-semibold text-white">
                           {mockTitle}
                         </h2>
-                        <p className="mt-2 text-center text-xs text-zinc-500">
+                        <p className="mt-2 text-center text-xs text-zinc-300">
                           {mockMessage}
                         </p>
                         <div className="mt-5">
@@ -840,7 +840,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               >
                 이번 점검 기록
               </label>
-              <p className="mt-0.5 text-[10px] tabular-nums text-zinc-500">
+              <p className="mt-0.5 text-[10px] tabular-nums text-zinc-400">
                 바코드 {totalBooks}권
               </p>
             </div>
@@ -862,7 +862,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               </button>
             )}
           </div>
-          <p className="mb-1.5 text-[10px] leading-snug text-zinc-500">
+          <p className="mb-1.5 text-[11px] leading-snug text-zinc-400">
             {sessionEditMode
               ? "한 줄에 번호 하나. 잘못 찍힌 줄은 지우거나 고쳐 주세요."
               : "찍힌 번호가 아래에 쌓여요. 고치려면 직접 수정을 눌러 주세요."}
@@ -882,10 +882,10 @@ export default function Scanner({ onExitSession }: ScannerProps) {
             autoComplete="off"
             autoCorrect="off"
             tabIndex={sessionEditMode ? 0 : -1}
-            className={`w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-2.5 py-2 font-mono text-sm leading-relaxed text-zinc-100 tabular-nums outline-none sm:text-base ${
+            className={`w-full resize-none rounded-xl px-2.5 py-2 font-mono text-sm leading-relaxed text-zinc-100 tabular-nums outline-none sm:text-base ${
               sessionEditMode
-                ? "min-h-[12rem] max-h-[36dvh] ring-emerald-500/30 focus:ring-2"
-                : "min-h-[8rem] max-h-[26dvh] cursor-default"
+                ? "min-h-[12rem] max-h-[36dvh] border border-emerald-600/60 bg-zinc-900 ring-emerald-500/30 focus:ring-2"
+                : "min-h-[8rem] max-h-[26dvh] cursor-default border border-dashed border-zinc-700 bg-zinc-900/50"
             }`}
           />
         </div>
