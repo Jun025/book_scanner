@@ -241,6 +241,14 @@ export default function Home() {
     () => toPlainSessionText(selectedText).length > 0,
     [selectedText]
   );
+  /** 리스트 화면 렌더마다 모든 항목에 대해 localStorage.getItem을 다시 부르지 않도록 한 번에 계산해 캐시. */
+  const sessionLineCounts = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const key of sessionKeys) {
+      out[key] = countSessionLines(readSessionRaw(key));
+    }
+    return out;
+  }, [sessionKeys]);
 
   if (isScanMode) {
     return (
@@ -375,25 +383,22 @@ export default function Home() {
                 </p>
               ) : (
                 <ul className="divide-y divide-zinc-800">
-                  {sessionKeys.map((key) => {
-                    const raw = readSessionRaw(key);
-                    return (
-                      <li key={key}>
-                        <button
-                          type="button"
-                          onClick={() => openDetail(key)}
-                          className="flex min-h-[3.75rem] w-full flex-col items-start justify-center px-4 py-4 text-left active:bg-zinc-800/70"
-                        >
-                          <span className="text-sm font-semibold text-zinc-100">
-                            {formatSessionLabel(key)}
-                          </span>
-                          <span className="text-xs text-zinc-400">
-                            바코드 {countSessionLines(raw)}권
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
+                  {sessionKeys.map((key) => (
+                    <li key={key}>
+                      <button
+                        type="button"
+                        onClick={() => openDetail(key)}
+                        className="flex min-h-[3.75rem] w-full flex-col items-start justify-center px-4 py-4 text-left active:bg-zinc-800/70"
+                      >
+                        <span className="text-sm font-semibold text-zinc-100">
+                          {formatSessionLabel(key)}
+                        </span>
+                        <span className="text-xs text-zinc-400">
+                          바코드 {sessionLineCounts[key] ?? 0}권
+                        </span>
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               )}
             </div>
