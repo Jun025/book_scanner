@@ -217,6 +217,10 @@ export default function Home() {
     setSelectedText("");
     refreshList();
     setAdminView("list");
+    /* detail 진입 시 push했던 히스토리 항목을 정리한다.
+       이 호출이 없으면 뒤로가기 시 popstate가 selectedKey=null 상태의 detail로
+       돌아가서 빈 화면이 표시된다. */
+    window.history.back();
   };
 
   const onCopy = async () => {
