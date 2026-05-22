@@ -711,7 +711,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               aria-live="polite"
             >
               <div className="mb-2 flex flex-col items-center border-b border-zinc-800/50 pb-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
                   지금까지 점검
                 </p>
                 {lastCaptureAt > 0 ? (
@@ -727,7 +727,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                   </p>
                 )}
               </div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
                 방금 인식
               </p>
               {lastCapturedCode ? (
@@ -779,7 +779,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                   {/* 로딩 오버레이 */}
                   {showCameraLoading && (
                     <div className="pointer-events-none absolute inset-0 z-[50] flex items-center justify-center bg-zinc-950/85 backdrop-blur-sm">
-                      <p className="text-sm text-zinc-400">카메라 준비 중…</p>
+                      <p className="text-sm text-zinc-300">카메라 준비 중…</p>
                     </div>
                   )}
 
