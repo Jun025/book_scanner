@@ -16,8 +16,10 @@ import { useScannerStore } from "@/store/useScannerStore";
 /** 도서관·상품 공통: 숫자만, 5~13자리 */
 const VALID_BARCODE = /^\d{5,13}$/;
 
-/** 카메라가 같은 프레임에서 비숫자를 연속 디코딩할 때 비프 스팸 방지 */
+/** 카메라가 같은 프레임에서 비숫자를 연속 디코딩할 때 비프·토스트 스팸 방지 */
 const INVALID_BEEP_COOLDOWN_MS = 900;
+/** 중복 토스트가 너무 자주 갱신되어 가려지지 않도록 짧게 누른다 */
+const DUPLICATE_TOAST_COOLDOWN_MS = 1200;
 const SCAN_INTERVAL_MS = 100;
 const SUCCESS_VIBRATION_PATTERN: number | number[] = [70];
 const UNSUPPORTED_MESSAGE =
@@ -135,6 +137,8 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   const scanTimerRef = useRef<number | null>(null);
   const detectBusyRef = useRef(false);
   const lastInvalidBeepAt = useRef(0);
+  const lastDuplicateToastAt = useRef(0);
+  const toastTimerRef = useRef<number | null>(null);
   const activeEngineRef = useRef<"native" | "quagga" | null>(null);
   const scanBufferRef = useRef<string[]>([]);
   const hasVibrationSupportRef = useRef(false);
@@ -154,7 +158,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
     useState("확인 중...");
   const [detectorEngine, setDetectorEngine] = useState("초기화 전");
   const [flashKey, setFlashKey] = useState<number | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ tone: "success" | "info"; text: string } | null>(null);
   const [cameraRetryToken, setCameraRetryToken] = useState(0);
   const [debugInfoOpen, setDebugInfoOpen] = useState(false);
   const [sessionEditMode, setSessionEditMode] = useState(false);
@@ -257,15 +261,37 @@ export default function Scanner({ onExitSession }: ScannerProps) {
     }
   }, []);
 
+  const showToast = useCallback(
+    (text: string, tone: "success" | "info", durationMs: number) => {
+      setToast({ tone, text });
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+      toastTimerRef.current = window.setTimeout(() => {
+        setToast(null);
+        toastTimerRef.current = null;
+      }, durationMs);
+    },
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const triggerFeedback = useCallback(
     (digits: string) => {
       playSuccess();
       void vibrateOnSuccess();
       setFlashKey(Date.now());
-      setToast(`기록했어요: ${digits}`);
-      window.setTimeout(() => setToast(null), 1500);
+      showToast(`기록했어요: ${digits}`, "success", 1500);
     },
-    [playSuccess, vibrateOnSuccess]
+    [playSuccess, showToast, vibrateOnSuccess]
   );
 
   const handleDecoded = useCallback(
@@ -277,14 +303,23 @@ export default function Scanner({ onExitSession }: ScannerProps) {
         if (now - lastInvalidBeepAt.current >= INVALID_BEEP_COOLDOWN_MS) {
           lastInvalidBeepAt.current = now;
           playFailure();
+          showToast("숫자가 아니에요. 넘어갔어요.", "info", 1400);
         }
         return;
       }
       const ok = appendDigitScanToActiveSession(trimmed);
-      if (ok) triggerFeedback(trimmed);
-      else playFailure();
+      if (ok) {
+        triggerFeedback(trimmed);
+        return;
+      }
+      /* 쿨다운 안에 같은 코드가 또 인식된 경우 — 사용자에게 "이미 찍었다"는 점을 부드럽게 알린다 */
+      const now = Date.now();
+      if (now - lastDuplicateToastAt.current >= DUPLICATE_TOAST_COOLDOWN_MS) {
+        lastDuplicateToastAt.current = now;
+        showToast(`이미 방금 기록한 번호예요: ${trimmed}`, "info", 1400);
+      }
     },
-    [appendDigitScanToActiveSession, playFailure, triggerFeedback]
+    [appendDigitScanToActiveSession, playFailure, showToast, triggerFeedback]
   );
 
   const retryCamera = useCallback(() => {
@@ -740,14 +775,19 @@ export default function Scanner({ onExitSession }: ScannerProps) {
 
       {toast && (
         <div
-          className={`pointer-events-none fixed left-2 right-2 z-[90] mx-auto max-w-md rounded-xl border border-emerald-500/40 bg-emerald-950/95 px-3 py-2 text-center text-sm text-emerald-100 shadow-lg ${
+          className={`pointer-events-none fixed left-2 right-2 z-[90] mx-auto max-w-md rounded-xl border px-3 py-2 text-center text-sm shadow-lg ${
+            toast.tone === "success"
+              ? "border-emerald-500/40 bg-emerald-950/95 text-emerald-100"
+              : "border-amber-500/40 bg-zinc-950/95 text-amber-100"
+          } ${
             sessionEditMode
               ? "bottom-[min(42vh,360px)]"
               : "bottom-[min(34vh,300px)]"
           }`}
           role="status"
+          aria-live="polite"
         >
-          {toast}
+          {toast.text}
         </div>
       )}
 
