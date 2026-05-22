@@ -131,6 +131,8 @@ export default function Home() {
   useLayoutEffect(() => {
     if (isScanMode || adminView !== "main") return;
     removeSessionKeysWithZeroBarcodes();
+    /* 메인 진입 시 빈 세션 정리 후 카운트가 paint 직전에 동기 반영되어야 한다 — 의도된 useLayoutEffect 동기 setState */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSessionKeys(listSessionStorageKeys());
   }, [isScanMode, adminView]);
 
