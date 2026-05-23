@@ -30,10 +30,26 @@ function formatSessionLabel(key: string): string {
   const iso = key.slice("book-scanner:session:".length);
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return key;
-  return d.toLocaleString("ko-KR", {
-    dateStyle: "medium",
-    timeStyle: "short",
+
+  const time = d.toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   });
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayDiff = Math.round(
+    (today.getTime() - target.getTime()) / 86_400_000
+  );
+
+  if (dayDiff === 0) return `오늘 ${time}`;
+  if (dayDiff === 1) return `어제 ${time}`;
+  if (d.getFullYear() === now.getFullYear()) {
+    return `${d.getMonth() + 1}월 ${d.getDate()}일 ${time}`;
+  }
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${time}`;
 }
 
 type Screen = "main" | "scan" | "list" | "detail";
@@ -323,7 +339,7 @@ export default function Home() {
                 오늘도 잘 와주었어요
               </p>
               <h2 className="mt-1 text-[26px] font-bold leading-tight tracking-tight text-text-primary">
-                책을 한 권씩{"\n"}찬찬히 점검해볼까요?
+                책을 한 권씩 찬찬히 점검해볼까요?
               </h2>
               <p className="mt-3 text-[14px] leading-relaxed text-text-secondary">
                 사서교사 민경 선생님과 함께 도서관을 돌보는 빛나래의 점검
@@ -387,7 +403,7 @@ export default function Home() {
                 setAdminView("list");
                 pushScreenHistory("list");
               }}
-              className="press flex min-h-[52px] items-center justify-between gap-2 rounded-xl bg-bg-subtle px-4 py-3.5 text-[15px] font-semibold text-text-primary"
+              className="press flex min-h-[52px] items-center justify-between gap-2 rounded-xl bg-bg-input px-4 py-3.5 text-[15px] font-semibold text-text-primary active:bg-border-default"
               aria-label={`지난 점검 기록 ${totalRecords}개 보기`}
             >
               <span className="inline-flex items-center gap-2">
