@@ -1,27 +1,246 @@
 @import "tailwindcss";
 
-/* 동대부가람고 · 빛나래 브랜드 토큰 (다크 기본) */
+/* Pretendard Variable (학교 내부용 PWA — 자체 호스팅 CDN 사용) */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+
+/* ============================================================
+   가람고 도서관 디자인 토큰 — 연꽃 로즈(주) · 목련 그린(완료)
+   Toss TDS 톤: 절제·일관·명료. 무채색 85 / 로즈 10 / 그린 5
+   ============================================================ */
 :root {
-  --bitnarae-amber: rgb(251 191 36);
-  --bitnarae-amber-dim: rgb(180 83 9 / 35%);
-  --bitnarae-emerald: rgb(52 211 153);
+  /* Primary · 연꽃 로즈 (교화) */
+  --lotus-50: #fcf1f4;
+  --lotus-100: #fae0e8;
+  --lotus-200: #f4c2d2;
+  --lotus-300: #ec9cb6;
+  --lotus-400: #e27498;
+  --lotus-500: #d75080;
+  --lotus-600: #c03a6a;
+  --lotus-700: #9e2d55;
+  --lotus-800: #7c2443;
+  --lotus-900: #5e1b33;
+
+  /* Accent · 목련 그린 (교목) */
+  --magnolia-50: #eff4ee;
+  --magnolia-100: #dbe7d8;
+  --magnolia-400: #6fa368;
+  --magnolia-500: #4e8a47;
+  --magnolia-600: #3b6f36;
+
+  /* Semantic */
+  --success-500: #3b6f36;
+  --success-bg: #e5f0e3;
+  --warning-500: #e0992a;
+  --warning-bg: #fbf0da;
+  --danger-500: #d64545;
+  --danger-bg: #fbe6e6;
+  --info-500: #d75080;
+  --info-bg: #fcf1f4;
+
+  /* Neutral (85%) */
+  --gray-0: #ffffff;
+  --gray-50: #faf9f9;
+  --gray-100: #f4f2f3;
+  --gray-200: #e8e5e7;
+  --gray-300: #d5d0d3;
+  --gray-400: #b3abb0;
+  --gray-500: #8c838a;
+  --gray-600: #6e656c;
+  --gray-700: #514951;
+  --gray-800: #362f35;
+  --gray-900: #1f1a1e;
+
+  /* Aliases — Light (default) */
+  --bg-base: var(--gray-0);
+  --bg-subtle: var(--gray-50);
+  --bg-card: var(--gray-0);
+  --bg-input: var(--gray-100);
+  --border-default: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-700);
+  --text-tertiary: var(--gray-500);
+  --text-disabled: var(--gray-400);
+  --text-on-brand: #ffffff;
+  --brand: var(--lotus-500);
+  --brand-hover: var(--lotus-600);
+  --brand-pressed: var(--lotus-700);
+  --brand-subtle: var(--lotus-50);
+  --brand-text: var(--lotus-700);
+  --accent: var(--magnolia-500);
+  --accent-subtle: var(--magnolia-50);
+  --accent-text: var(--magnolia-600);
+
+  /* Type scale */
+  --font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --text-display: 28px;
+  --text-title: 22px;
+  --text-heading: 18px;
+  --text-body: 16px;
+  --text-label: 15px;
+  --text-caption: 13px;
+  --text-micro: 11px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadow (light) */
+  --shadow-sm: 0 1px 2px rgba(31, 26, 30, 0.05);
+  --shadow-md: 0 4px 16px rgba(31, 26, 30, 0.07);
+  --shadow-lg: 0 8px 28px rgba(31, 26, 30, 0.09);
+
+  /* Layout */
+  --container-max: 480px;
+  --header-height: 56px;
+  --safe-bottom: env(safe-area-inset-bottom);
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-base: #161115;
+    --bg-subtle: #1e181c;
+    --bg-card: #251e23;
+    --bg-input: #2e262c;
+    --border-default: #382f35;
+    --border-strong: #4a3f46;
+    --text-primary: #f2ecef;
+    --text-secondary: #c2b8be;
+    --text-tertiary: #8c828a;
+    --text-disabled: #635963;
+    --text-on-brand: #ffffff;
+    --brand: var(--lotus-400);
+    --brand-hover: var(--lotus-300);
+    --brand-pressed: var(--lotus-200);
+    --brand-subtle: rgba(215, 80, 128, 0.16);
+    --brand-text: var(--lotus-200);
+    --accent: var(--magnolia-400);
+    --accent-subtle: rgba(78, 138, 71, 0.16);
+    --accent-text: var(--magnolia-400);
+    --success-bg: rgba(59, 111, 54, 0.2);
+    --warning-bg: rgba(224, 153, 42, 0.18);
+    --danger-bg: rgba(214, 69, 69, 0.18);
+    --info-bg: rgba(215, 80, 128, 0.16);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow-md: 0 4px 18px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.55);
+  }
+}
+
+/* Tailwind v4 토큰 매핑 — 유틸리티 클래스로 노출 */
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-pressed: var(--brand-pressed);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-text: var(--brand-text);
+  --color-accent: var(--accent);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-text: var(--accent-text);
+
+  --color-bg-base: var(--bg-base);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-card: var(--bg-card);
+  --color-bg-input: var(--bg-input);
+
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-disabled: var(--text-disabled);
+  --color-text-on-brand: var(--text-on-brand);
+
+  --color-success: var(--success-500);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning-500);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger-500);
+  --color-danger-bg: var(--danger-bg);
+  --color-info: var(--info-500);
+  --color-info-bg: var(--info-bg);
+
+  --font-sans: var(--font-sans);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+}
+
+/* 기본 타이포 — 본문 16px(모바일 줌 방지) */
+html,
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 포커스 링 — 접근성 유지 */
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 버튼·인풋 press 인터랙션 (글로벌 스코프 — 토스 마이크로 인터랙션) */
+.press {
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.press:active {
+  transform: scale(0.98);
+}
+
+/* 스캔 성공 플래시 — 목련 그린 (완료 색) */
 @keyframes scan-success-flash {
   0% {
     opacity: 0;
     border-color: transparent;
-    box-shadow: inset 0 0 0 0 rgb(52 211 153 / 0%);
+    box-shadow: inset 0 0 0 0 rgba(78, 138, 71, 0);
   }
   40% {
     opacity: 1;
-    border-color: rgb(52 211 153);
-    box-shadow: inset 0 0 0 4px rgb(52 211 153 / 35%);
+    border-color: var(--magnolia-400);
+    box-shadow: inset 0 0 0 4px rgba(78, 138, 71, 0.32);
   }
   100% {
     opacity: 0;
     border-color: transparent;
-    box-shadow: inset 0 0 0 0 rgb(52 211 153 / 0%);
+    box-shadow: inset 0 0 0 0 rgba(78, 138, 71, 0);
   }
 }
 
@@ -32,15 +251,15 @@
 @keyframes scan-live-code-hit {
   0% {
     transform: scale(0.96);
-    box-shadow: 0 0 0 0 rgb(52 211 153 / 0%);
+    box-shadow: 0 0 0 0 rgba(78, 138, 71, 0);
   }
   35% {
     transform: scale(1.02);
-    box-shadow: 0 0 28px 4px rgb(52 211 153 / 45%);
+    box-shadow: 0 0 24px 4px rgba(78, 138, 71, 0.32);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgb(52 211 153 / 0%);
+    box-shadow: 0 0 0 0 rgba(78, 138, 71, 0);
   }
 }
 
@@ -50,22 +269,46 @@
 
 @keyframes scan-total-hit {
   0% {
-    transform: scale(0.94);
-    color: rgb(212 212 216);
-    text-shadow: 0 0 0 rgb(251 191 36 / 0%);
+    transform: scale(0.96);
   }
   45% {
     transform: scale(1.08);
-    color: rgb(253 230 138);
-    text-shadow: 0 0 22px rgb(251 191 36 / 55%);
+    color: var(--brand);
   }
   100% {
     transform: scale(1);
-    color: rgb(254 243 199);
-    text-shadow: 0 0 0 rgb(251 191 36 / 0%);
   }
 }
 
 .scan-total-hit {
   animation: scan-total-hit 0.55s ease-out forwards;
+}
+
+/* 스켈레톤 — 빈 상태/로딩 */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.skeleton {
+  background-color: var(--bg-input);
+  border-radius: var(--radius-md);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* 인풋 — 16px 보장, 보더리스, 토큰 색 */
+textarea,
+input,
+select {
+  font-family: inherit;
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+textarea::placeholder,
+input::placeholder {
+  color: var(--text-tertiary);
 }

@@ -1,19 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const viewport: Viewport = {
-  themeColor: "#0f766e",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#161115" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -24,13 +16,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "빛나래 장서점검",
   description:
-    "동국대학교사범대학부속가람고등학교 도서부 빛나래 장서점검. 바코드(숫자)를 찍을 때마다 이 기기에 즉시 저장되며, 목록·점검 화면에서 클립보드로 한 번에 복사해 메신저로 보고할 수 있습니다.",
+    "동국대학교사범대학부속가람고등학교 도서부 빛나래 장서점검. 바코드를 찍을 때마다 이 기기에 바로 저장돼요. 점검을 마치면 클립보드로 한 번에 복사해 선생님께 보내요.",
   manifest: "/manifest.json",
   applicationName: "빛나래 장서점검",
   appleWebApp: {
     capable: true,
     title: "빛나래 장서점검",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
   formatDetection: {
     telephone: false,
@@ -48,11 +40,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ko"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-black text-white">
+    <html lang="ko" className="h-full antialiased">
+      <body className="min-h-full flex flex-col bg-bg-base text-text-primary">
         {children}
       </body>
     </html>
