@@ -50,7 +50,10 @@
   --gray-800: #362f35;
   --gray-900: #1f1a1e;
 
-  /* Aliases — Light (default) */
+  /* Aliases — Light (default).
+     주의: --brand=lotus-600, --accent=magnolia-600은 WCAG AA(4.5:1) 통과를
+     위해 spec 기준에서 한 단계 진하게 사용 — lotus-500/magnolia-500은 흰
+     텍스트와 3.9:1 수준이라 본문/세미볼드 버튼 대비를 못 맞춤. */
   --bg-base: var(--gray-0);
   --bg-subtle: var(--gray-50);
   --bg-card: var(--gray-0);
@@ -62,14 +65,15 @@
   --text-tertiary: var(--gray-500);
   --text-disabled: var(--gray-400);
   --text-on-brand: #ffffff;
-  --brand: var(--lotus-500);
-  --brand-hover: var(--lotus-600);
-  --brand-pressed: var(--lotus-700);
+  --brand: var(--lotus-600);
+  --brand-hover: var(--lotus-700);
+  --brand-pressed: var(--lotus-800);
   --brand-subtle: var(--lotus-50);
   --brand-text: var(--lotus-700);
-  --accent: var(--magnolia-500);
+  --accent: var(--magnolia-600);
   --accent-subtle: var(--magnolia-50);
   --accent-text: var(--magnolia-600);
+  --toast-info-bg: var(--gray-800);
 
   /* Type scale */
   --font-sans:
@@ -129,7 +133,9 @@
     --text-secondary: #c2b8be;
     --text-tertiary: #8c828a;
     --text-disabled: #635963;
-    --text-on-brand: #ffffff;
+    /* 다크모드는 brand·accent가 한 단계 밝아져 흰 텍스트와는 대비가
+       부족(2.9:1). 진한 텍스트(gray-900)를 올려 6:1+ 보장. */
+    --text-on-brand: var(--gray-900);
     --brand: var(--lotus-400);
     --brand-hover: var(--lotus-300);
     --brand-pressed: var(--lotus-200);
@@ -138,6 +144,7 @@
     --accent: var(--magnolia-400);
     --accent-subtle: rgba(78, 138, 71, 0.16);
     --accent-text: var(--magnolia-400);
+    --toast-info-bg: var(--gray-800);
     --success-bg: rgba(59, 111, 54, 0.2);
     --warning-bg: rgba(224, 153, 42, 0.18);
     --danger-bg: rgba(214, 69, 69, 0.18);
@@ -181,6 +188,7 @@
   --color-danger-bg: var(--danger-bg);
   --color-info: var(--info-500);
   --color-info-bg: var(--info-bg);
+  --color-toast-info-bg: var(--toast-info-bg);
 
   --font-sans: var(--font-sans);
 
@@ -311,4 +319,18 @@ select {
 textarea::placeholder,
 input::placeholder {
   color: var(--text-tertiary);
+}
+
+/* 감속 동작 선호 사용자 — 모든 인터랙티브 애니메이션 즉시 종료 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .press:active {
+    transform: none;
+  }
 }
