@@ -145,6 +145,8 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   const activeEngineRef = useRef<"native" | "quagga" | null>(null);
   const scanBufferRef = useRef<string[]>([]);
   const hasVibrationSupportRef = useRef(false);
+  const debugDialogRef = useRef<HTMLDivElement | null>(null);
+  const debugTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const { playSuccess, playFailure, prime } = useScanBeeps();
 
@@ -264,13 +266,53 @@ export default function Scanner({ onExitSession }: ScannerProps) {
     setVibrationSupportLabel(supportsVibration ? "지원" : "미지원");
   }, []);
 
+  /* 다이얼로그 ARIA APG 패턴: ESC 닫기, Tab 트랩, 닫을 때 트리거로 포커스 복귀. */
   useEffect(() => {
     if (!debugInfoOpen) return;
+
+    const dialog = debugDialogRef.current;
+    /* 닫을 때 포커스를 돌려놓을 트리거를 effect 시점에 캡처해 두면
+       cleanup 시 ref가 바뀌어도 동일 노드를 가리킬 수 있어요. */
+    const trigger = debugTriggerRef.current;
+
+    /* 다이얼로그 열 때 첫 포커스를 다이얼로그 안 첫 인터랙티브 요소로. */
+    const focusables = () =>
+      dialog
+        ? Array.from(
+            dialog.querySelectorAll<HTMLElement>(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((el) => !el.hasAttribute("disabled"))
+        : [];
+
+    const initial = focusables();
+    initial[0]?.focus();
+
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDebugInfoOpen(false);
+      if (e.key === "Escape") {
+        setDebugInfoOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || !dialog?.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      trigger?.focus();
+    };
   }, [debugInfoOpen]);
 
   const vibrateOnSuccess = useCallback(() => {
@@ -684,6 +726,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                 <>
                   <button
                     type="button"
+                    ref={debugTriggerRef}
                     id="scan-debug-info-trigger"
                     aria-label="기기 정보와 소리 설정 열기"
                     aria-haspopup="dialog"
@@ -954,6 +997,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
           onClick={() => setDebugInfoOpen(false)}
         >
           <div
+            ref={debugDialogRef}
             id="scan-debug-info-dialog"
             role="dialog"
             aria-modal="true"
