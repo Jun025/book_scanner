@@ -105,7 +105,7 @@ const ChevronLeftIcon = ({ className }: { className?: string }) => (
     className={className}
     fill="none"
     stroke="currentColor"
-    strokeWidth={2.2}
+    strokeWidth={2}
     strokeLinecap="round"
     strokeLinejoin="round"
     aria-hidden
@@ -156,7 +156,9 @@ export default function Home() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState("");
   const [copyDone, setCopyDone] = useState(false);
+  const [savedAt, setSavedAt] = useState(0);
   const timerRef = useRef<number | null>(null);
+  const savedTimerRef = useRef<number | null>(null);
   /** `scheduleLeaveHostedApp`이 연쇄 popstate를 일으킬 때 재진입 방지 */
   const skipLeaveEchoRef = useRef(false);
   const didSetupHistoryRef = useRef(false);
@@ -196,6 +198,8 @@ export default function Home() {
   useEffect(() => {
     return () => {
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+      if (savedTimerRef.current !== null)
+        window.clearTimeout(savedTimerRef.current);
     };
   }, []);
 
@@ -250,6 +254,7 @@ export default function Home() {
     setSelectedKey(key);
     setSelectedText(readSessionRaw(key));
     setCopyDone(false);
+    setSavedAt(0);
     setAdminView("detail");
     pushScreenHistory("detail");
   };
@@ -259,6 +264,10 @@ export default function Home() {
     setSelectedText(value);
     writeSessionRaw(selectedKey, value);
     refreshList();
+    setSavedAt(Date.now());
+    if (savedTimerRef.current !== null)
+      window.clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = window.setTimeout(() => setSavedAt(0), 1200);
   };
 
   const onDelete = () => {
@@ -569,9 +578,20 @@ export default function Home() {
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col">
-              <p className="mb-2 text-[12px] leading-relaxed text-text-tertiary">
-                한 줄에 번호 하나씩 적으면 복사할 때 깔끔해요.
-              </p>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-[12px] leading-relaxed text-text-tertiary">
+                  한 줄에 번호 하나씩 적으면 복사할 때 깔끔해요.
+                </p>
+                <span
+                  role="status"
+                  aria-live="polite"
+                  className={`shrink-0 text-[12px] font-medium text-accent-text transition-opacity duration-200 ${
+                    savedAt > 0 ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  {savedAt > 0 ? "저장됨" : ""}
+                </span>
+              </div>
               <textarea
                 value={selectedText}
                 onChange={(e) => onChangeDetail(e.target.value)}
