@@ -24,10 +24,10 @@ const DUPLICATE_TOAST_COOLDOWN_MS = 1200;
 const SCAN_INTERVAL_MS = 100;
 const SUCCESS_VIBRATION_PATTERN: number | number[] = [70];
 const UNSUPPORTED_MESSAGE =
-  "이 브라우저는 네이티브 바코드 스캔을 지원하지 않습니다. Safari 17 이상이나 최신 Chrome을 사용해주세요.";
+  "이 브라우저는 바코드 스캔을 지원하지 않아요. Safari 17 이상이나 최신 Chrome으로 다시 들어와 주세요.";
 const CAMERA_ERROR_TITLE = "카메라를 켤 수 없어요";
 const CAMERA_ERROR_HINT =
-  "카메라 엑세스 허용 후 이 화면으로 돌아오면 자동으로 다시 연결합니다.";
+  "설정에서 카메라 사용을 허용한 뒤 이 화면으로 돌아오면 다시 연결할게요.";
 /** 도서관 등 조용한 환경을 위해 비프만 끄는 설정. 진동/시각 피드백은 유지. */
 const SOUND_MUTED_STORAGE_KEY = "book-scanner:settings:sound-muted";
 const BARCODE_FORMATS = [
@@ -326,7 +326,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
       maybePlaySuccess();
       void vibrateOnSuccess();
       setFlashKey(Date.now());
-      showToast(`기록했어요: ${digits}`, "success", 1500);
+      showToast(`기록했어요 · ${digits}`, "success", 1500);
     },
     [maybePlaySuccess, showToast, vibrateOnSuccess]
   );
@@ -340,7 +340,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
         if (now - lastInvalidBeepAt.current >= INVALID_BEEP_COOLDOWN_MS) {
           lastInvalidBeepAt.current = now;
           maybePlayFailure();
-          showToast("숫자가 아니에요. 넘어갔어요.", "info", 1400);
+          showToast("숫자가 아니라 넘어갔어요", "info", 1400);
         }
         return;
       }
@@ -353,7 +353,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
       const now = Date.now();
       if (now - lastDuplicateToastAt.current >= DUPLICATE_TOAST_COOLDOWN_MS) {
         lastDuplicateToastAt.current = now;
-        showToast(`이미 방금 기록한 번호예요: ${trimmed}`, "info", 1400);
+        showToast(`방금 찍은 번호예요 · ${trimmed}`, "info", 1400);
       }
     },
     [appendDigitScanToActiveSession, maybePlayFailure, showToast, triggerFeedback]
@@ -463,7 +463,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
         }
       } catch {
         if (!cancelled) {
-          setMockTitle("스캔 엔진 초기화 실패");
+          setMockTitle("스캔 엔진을 켤 수 없어요");
           setMockMessage(UNSUPPORTED_MESSAGE);
           setMode("mock");
         }
@@ -665,7 +665,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   };
 
   return (
-    <div className="isolate flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-zinc-950 text-zinc-100">
+    <div className="isolate flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-bg-base text-text-primary">
       {flashKey != null && (
         <div
           key={flashKey}
@@ -685,19 +685,32 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                   <button
                     type="button"
                     id="scan-debug-info-trigger"
-                    aria-label="기기 정보 · 소리 설정 열기"
+                    aria-label="기기 정보와 소리 설정 열기"
                     aria-haspopup="dialog"
                     aria-expanded={debugInfoOpen}
                     aria-controls="scan-debug-info-dialog"
                     onClick={() => setDebugInfoOpen(true)}
-                    className="flex min-h-14 min-w-14 items-center justify-center rounded-2xl border border-zinc-600/90 bg-zinc-900 text-base font-bold italic text-zinc-300 active:bg-zinc-800"
+                    className="press flex h-11 w-11 items-center justify-center rounded-full bg-bg-subtle text-text-secondary"
                   >
-                    i
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 8h.01" />
+                      <path d="M11 12h1v5h1" />
+                    </svg>
                   </button>
                   <button
                     type="button"
                     onClick={handleExitSession}
-                    className="min-h-14 min-w-[5.5rem] rounded-2xl border border-amber-700/80 bg-zinc-900 px-4 py-3 text-sm font-semibold text-amber-100 active:bg-zinc-800"
+                    className="press min-h-11 rounded-full bg-bg-subtle px-4 text-[14px] font-semibold text-text-primary"
                   >
                     점검 중단
                   </button>
@@ -706,42 +719,58 @@ export default function Scanner({ onExitSession }: ScannerProps) {
             />
             <OnlineStatusBanner />
 
+            {/* 진행 요약 — 토스풍 압축 카드: 총 권수 · 방금 인식 */}
             <div
-              className="shrink-0 border-b border-zinc-800/80 bg-zinc-950/90 px-4 py-2 backdrop-blur-sm"
+              className="shrink-0 border-b border-border-default bg-bg-base px-4 pb-3 pt-2"
               aria-live="polite"
             >
-              <div className="mb-2 flex flex-col items-center border-b border-zinc-800/50 pb-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                  지금까지 점검
-                </p>
-                {lastCaptureAt > 0 ? (
-                  <p
-                    key={`total-${lastCaptureAt}`}
-                    className="scan-total-hit mt-1 text-xl font-bold tabular-nums sm:text-2xl"
-                  >
-                    총 <span className="tabular-nums">{totalBooks}</span>권
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold text-text-tertiary">
+                    지금까지 점검
                   </p>
-                ) : (
-                  <p className="mt-1 text-xl font-bold tabular-nums text-zinc-400 sm:text-2xl">
-                    총 <span className="tabular-nums">{totalBooks}</span>권
+                  {lastCaptureAt > 0 ? (
+                    <p
+                      key={`total-${lastCaptureAt}`}
+                      className="scan-total-hit mt-0.5 text-[22px] font-bold tabular-nums text-text-primary"
+                    >
+                      {totalBooks}
+                      <span className="ml-1 text-[14px] font-semibold text-text-tertiary">
+                        권
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-[22px] font-bold tabular-nums text-text-tertiary">
+                      {totalBooks}
+                      <span className="ml-1 text-[14px] font-semibold">권</span>
+                    </p>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 rounded-xl bg-bg-subtle px-3 py-2">
+                  <p className="text-[11px] font-semibold text-text-tertiary">
+                    방금 인식
                   </p>
-                )}
+                  {lastCapturedCode ? (
+                    <p
+                      key={`code-${lastCaptureAt}`}
+                      className="scan-live-code-hit mt-0.5 truncate text-right text-[18px] font-bold tabular-nums text-accent-text"
+                    >
+                      {lastCapturedCode}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 truncate text-right text-[13px] text-text-tertiary">
+                      대기 중
+                    </p>
+                  )}
+                </div>
               </div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-                방금 인식
-              </p>
-              {lastCapturedCode ? (
-                <p
-                  key={`code-${lastCaptureAt}`}
-                  className="scan-live-code-hit mt-1 break-all text-center text-2xl font-bold tabular-nums tracking-tight text-emerald-300 sm:text-3xl"
-                >
-                  {lastCapturedCode}
-                </p>
-              ) : (
-                <p className="mt-1 text-center text-sm leading-snug text-zinc-300">
-                  아직 없어요. 책등·바코드가{" "}
-                  <span className="text-zinc-100">숫자만</span> 보이게 비춰
-                  주세요.
+              {!lastCapturedCode && (
+                <p className="mt-2 text-[12px] leading-snug text-text-tertiary">
+                  바코드의{" "}
+                  <span className="font-semibold text-text-secondary">
+                    숫자 부분
+                  </span>
+                  이 가운데 사각형에 들어오게 비춰주세요.
                 </p>
               )}
             </div>
@@ -749,7 +778,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
             <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               {showCameraArea && (
                 <div
-                  className={`relative z-20 w-full min-w-0 flex-1 overflow-hidden ${
+                  className={`relative z-20 w-full min-w-0 flex-1 overflow-hidden bg-gray-900 ${
                     sessionEditMode ? "min-h-[38dvh]" : "min-h-[44dvh]"
                   }`}
                 >
@@ -759,7 +788,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                     autoPlay
                     playsInline
                     muted
-                    className="absolute inset-0 z-10 h-full w-full bg-zinc-900 object-cover"
+                    className="absolute inset-0 z-10 h-full w-full bg-[var(--gray-900)] object-cover"
                   />
 
                   {/* Quagga ROI(중앙, 가로 90% × 세로 72%) 가이드라인 오버레이 */}
@@ -768,40 +797,62 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                       className="relative h-[72%] w-[90%] rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
                       aria-hidden
                     >
-                      {/* corners */}
-                      <span className="absolute left-0 top-0 h-6 w-6 border-l-4 border-t-4 border-emerald-400" />
-                      <span className="absolute right-0 top-0 h-6 w-6 border-r-4 border-t-4 border-emerald-400" />
-                      <span className="absolute bottom-0 left-0 h-6 w-6 border-b-4 border-l-4 border-emerald-400" />
-                      <span className="absolute bottom-0 right-0 h-6 w-6 border-b-4 border-r-4 border-emerald-400" />
+                      {/* corners — 목련 그린 (스캔 가이드) */}
+                      <span className="absolute left-0 top-0 h-6 w-6 rounded-tl-md border-l-[3px] border-t-[3px] border-[var(--magnolia-400)]" />
+                      <span className="absolute right-0 top-0 h-6 w-6 rounded-tr-md border-r-[3px] border-t-[3px] border-[var(--magnolia-400)]" />
+                      <span className="absolute bottom-0 left-0 h-6 w-6 rounded-bl-md border-b-[3px] border-l-[3px] border-[var(--magnolia-400)]" />
+                      <span className="absolute bottom-0 right-0 h-6 w-6 rounded-br-md border-b-[3px] border-r-[3px] border-[var(--magnolia-400)]" />
                     </div>
                   </div>
 
                   {/* 로딩 오버레이 */}
                   {showCameraLoading && (
-                    <div className="pointer-events-none absolute inset-0 z-[50] flex items-center justify-center bg-zinc-950/85 backdrop-blur-sm">
-                      <p className="text-sm text-zinc-300">카메라 준비 중…</p>
+                    <div
+                      className="pointer-events-none absolute inset-0 z-[50] flex flex-col items-center justify-center gap-3 bg-black/70 backdrop-blur-sm"
+                      aria-busy="true"
+                    >
+                      <span
+                        className="inline-block h-8 w-8 animate-spin rounded-full border-[3px] border-white/30 border-t-white"
+                        aria-hidden
+                      />
+                      <p className="text-[14px] font-medium text-white">
+                        카메라를 켜고 있어요…
+                      </p>
                     </div>
                   )}
 
-                  {/* 권한 오류 오버레이 — #reader 위에 absolute 로 덮음 */}
+                  {/* 권한 오류 오버레이 */}
                   {showMockPanel && (
-                    <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-zinc-950 px-4">
-                      <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900/90 p-6 shadow-xl">
-                        <h2 className="text-center text-lg font-semibold text-white">
+                    <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-black/85 px-5">
+                      <div className="w-full max-w-md rounded-2xl bg-bg-card p-6 shadow-lg">
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-warning-bg">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-6 w-6 text-warning"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                          >
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                          </svg>
+                        </div>
+                        <h2 className="text-center text-[17px] font-bold text-text-primary">
                           {mockTitle}
                         </h2>
-                        <p className="mt-2 text-center text-xs text-zinc-300">
+                        <p className="mt-2 text-center text-[13px] leading-relaxed text-text-secondary">
                           {mockMessage}
                         </p>
-                        <div className="mt-5">
-                          <button
-                            type="button"
-                            onClick={retryCamera}
-                            className="min-h-14 w-full rounded-2xl border border-emerald-700/70 bg-emerald-900/70 px-4 py-3 text-base font-semibold text-emerald-100 transition active:scale-[0.99]"
-                          >
-                            카메라 다시 연결하기
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={retryCamera}
+                          className="press mt-5 min-h-[52px] w-full rounded-xl bg-brand px-4 text-[15px] font-semibold text-text-on-brand hover:bg-brand-hover"
+                        >
+                          카메라 다시 연결하기
+                        </button>
                       </div>
                     </div>
                   )}
@@ -814,10 +865,10 @@ export default function Scanner({ onExitSession }: ScannerProps) {
 
       {toast && (
         <div
-          className={`pointer-events-none fixed left-2 right-2 z-[90] mx-auto max-w-md rounded-xl border px-3 py-2 text-center text-sm shadow-lg ${
+          className={`pointer-events-none fixed left-3 right-3 z-[90] mx-auto max-w-md rounded-xl px-4 py-3 text-center text-[14px] font-medium shadow-lg ${
             toast.tone === "success"
-              ? "border-emerald-500/40 bg-emerald-950/95 text-emerald-100"
-              : "border-amber-500/40 bg-zinc-950/95 text-amber-100"
+              ? "bg-[var(--magnolia-600)] text-white"
+              : "bg-[var(--gray-900)] text-white"
           } ${
             sessionEditMode
               ? "bottom-[min(42vh,360px)]"
@@ -831,16 +882,16 @@ export default function Scanner({ onExitSession }: ScannerProps) {
       )}
 
       {inSession && (
-        <div className="relative z-40 shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-          <div className="mb-1.5 flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
+        <div className="relative z-40 shrink-0 border-t border-border-default bg-bg-base px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <label
                 htmlFor="scan-session-textarea"
-                className="block text-xs font-semibold uppercase tracking-wide text-zinc-400"
+                className="block text-[12px] font-semibold text-text-tertiary"
               >
                 이번 점검 기록
               </label>
-              <p className="mt-0.5 text-[10px] tabular-nums text-zinc-400">
+              <p className="mt-0.5 text-[11px] tabular-nums text-text-tertiary">
                 바코드 {totalBooks}권
               </p>
             </div>
@@ -848,25 +899,25 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               <button
                 type="button"
                 onClick={exitSessionEditMode}
-                className="flex min-h-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-600/80 bg-emerald-900/60 px-4 text-sm font-semibold text-emerald-100 active:bg-emerald-900"
+                className="press flex min-h-11 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-[14px] font-semibold text-text-on-brand"
               >
-                완료
+                수정 완료
               </button>
             ) : (
               <button
                 type="button"
                 onClick={enterSessionEditMode}
-                className="flex min-h-12 shrink-0 items-center justify-center rounded-2xl border border-zinc-600 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 active:bg-zinc-800"
+                className="press flex min-h-11 shrink-0 items-center justify-center rounded-full bg-bg-subtle px-5 text-[14px] font-semibold text-text-primary"
               >
                 직접 수정
               </button>
             )}
           </div>
-          <p className="mb-1.5 text-[11px] leading-snug text-zinc-400">
-            {sessionEditMode
-              ? "한 줄에 번호 하나. 잘못 찍힌 줄은 지우거나 고쳐 주세요."
-              : "찍힌 번호가 아래에 쌓여요. 고치려면 직접 수정을 눌러 주세요."}
-          </p>
+          {sessionEditMode && (
+            <p className="mb-2 text-[12px] leading-snug text-text-tertiary">
+              한 줄에 번호 하나씩. 잘못 찍힌 줄은 지우거나 고쳐 주세요.
+            </p>
+          )}
           <textarea
             ref={sessionTextareaRef}
             id="scan-session-textarea"
@@ -878,14 +929,19 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                 ? (e) => setLiveSessionText(e.target.value)
                 : undefined
             }
+            placeholder={
+              sessionEditMode
+                ? "한 줄에 번호 하나씩"
+                : "여기에 찍은 번호가 쌓여요"
+            }
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"
             tabIndex={sessionEditMode ? 0 : -1}
-            className={`w-full resize-none rounded-xl px-2.5 py-2 font-mono text-sm leading-relaxed text-zinc-100 tabular-nums outline-none sm:text-base ${
+            className={`w-full resize-none rounded-xl px-3.5 py-3 font-mono text-[15px] leading-relaxed tabular-nums text-text-primary outline-none ${
               sessionEditMode
-                ? "min-h-[12rem] max-h-[36dvh] border border-emerald-600/60 bg-zinc-900 ring-emerald-500/30 focus:ring-2"
-                : "min-h-[8rem] max-h-[26dvh] cursor-default border border-dashed border-zinc-700 bg-zinc-900/50"
+                ? "min-h-[12rem] max-h-[36dvh] border border-accent bg-bg-input focus:border-accent"
+                : "min-h-[8rem] max-h-[26dvh] cursor-default bg-bg-input"
             }`}
           />
         </div>
@@ -893,7 +949,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
 
       {inSession && debugInfoOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-6"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-6"
           role="presentation"
           onClick={() => setDebugInfoOpen(false)}
         >
@@ -902,12 +958,12 @@ export default function Scanner({ onExitSession }: ScannerProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="scan-debug-info-title"
-            className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900/95 p-5 shadow-2xl"
+            className="w-full max-w-md rounded-2xl bg-bg-card p-5 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h2
               id="scan-debug-info-title"
-              className="text-center text-lg font-semibold text-white"
+              className="text-[17px] font-bold text-text-primary"
             >
               기기 정보 · 소리 설정
             </h2>
@@ -916,53 +972,58 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               type="button"
               onClick={toggleSoundMuted}
               role="switch"
-              aria-checked={soundMuted}
-              className={`mt-4 flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition active:scale-[0.99] ${
-                soundMuted
-                  ? "border-amber-600/70 bg-amber-950/40"
-                  : "border-zinc-600 bg-zinc-800/80"
+              aria-checked={!soundMuted}
+              className={`press mt-4 flex min-h-[60px] w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left ${
+                soundMuted ? "bg-warning-bg" : "bg-bg-subtle"
               }`}
             >
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-zinc-100">
+                <span className="block text-[14px] font-semibold text-text-primary">
                   스캔 소리
                 </span>
-                <span className="mt-0.5 block text-[11px] text-zinc-400">
-                  도서관처럼 조용한 곳에서는 끄세요. 진동·화면 표시는 그대로
+                <span className="mt-0.5 block text-[12px] leading-snug text-text-secondary">
+                  조용한 곳에서는 꺼두세요. 진동과 화면 깜빡임은 그대로
                   유지돼요.
                 </span>
               </span>
               <span
                 aria-hidden
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
-                  soundMuted
-                    ? "bg-amber-500/80 text-amber-950"
-                    : "bg-emerald-500/80 text-emerald-950"
+                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+                  soundMuted ? "bg-border-strong" : "bg-accent"
                 }`}
               >
-                {soundMuted ? "꺼짐" : "켜짐"}
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                    soundMuted ? "translate-x-1" : "translate-x-6"
+                  }`}
+                />
               </span>
             </button>
 
-            <p className="mt-5 text-[11px] text-zinc-300">
-              브라우저: {clientInfo.browser}
-            </p>
-            <p className="mt-1 text-[11px] text-zinc-300">OS: {clientInfo.os}</p>
-            <p className="mt-1 text-[11px] text-zinc-400">
-              진동 API: {vibrationSupportLabel}
-            </p>
-            <p className="mt-1 text-[11px] text-zinc-400">
-              스캔 엔진: {detectorEngine}
-            </p>
-            <div className="mt-5">
-              <button
-                type="button"
-                onClick={() => setDebugInfoOpen(false)}
-                className="min-h-14 w-full rounded-2xl border border-zinc-600 bg-zinc-800 px-4 py-3 text-base font-semibold text-zinc-100 active:bg-zinc-700"
-              >
-                닫기
-              </button>
-            </div>
+            <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[12px]">
+              <dt className="text-text-tertiary">브라우저</dt>
+              <dd className="text-right text-text-secondary">
+                {clientInfo.browser}
+              </dd>
+              <dt className="text-text-tertiary">OS</dt>
+              <dd className="text-right text-text-secondary">{clientInfo.os}</dd>
+              <dt className="text-text-tertiary">진동</dt>
+              <dd className="text-right text-text-secondary">
+                {vibrationSupportLabel}
+              </dd>
+              <dt className="text-text-tertiary">스캔 엔진</dt>
+              <dd className="text-right text-text-secondary">
+                {detectorEngine}
+              </dd>
+            </dl>
+
+            <button
+              type="button"
+              onClick={() => setDebugInfoOpen(false)}
+              className="press mt-5 min-h-[52px] w-full rounded-xl bg-bg-subtle px-4 text-[15px] font-semibold text-text-primary"
+            >
+              닫기
+            </button>
           </div>
         </div>
       )}

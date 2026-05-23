@@ -32,7 +32,7 @@ function formatSessionLabel(key: string): string {
   if (Number.isNaN(d.getTime())) return key;
   return d.toLocaleString("ko-KR", {
     dateStyle: "medium",
-    timeStyle: "medium",
+    timeStyle: "short",
   });
 }
 
@@ -83,9 +83,35 @@ async function copyText(text: string): Promise<void> {
   await navigator.clipboard.writeText(text);
 }
 
-const SCHOOL_NAME =
-  "동국대학교사범대학부속가람고등학교 도서관";
-const CLUB_NAME = "도서부 동아리 빛나래";
+const ChevronLeftIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M15 6l-6 6 6 6" />
+  </svg>
+);
+
+const ChevronRightIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+);
 
 export default function Home() {
   const activeSessionKey = useScannerStore((s) => s.activeSessionKey);
@@ -208,7 +234,7 @@ export default function Home() {
     if (!selectedKey) return;
     if (
       !window.confirm(
-        "이 점검 기록을 삭제할까요?\n삭제하면 이 휴대폰에서 복구할 수 없어요."
+        "이 점검 기록을 지울까요?\n지우면 이 기기에서 다시 살릴 수 없어요."
       )
     )
       return;
@@ -232,7 +258,7 @@ export default function Home() {
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => setCopyDone(false), 1800);
     } catch {
-      window.alert("복사에 실패했습니다. 텍스트를 길게 눌러 직접 복사해 주세요.");
+      window.alert("복사가 안 됐어요. 글씨를 길게 눌러 직접 복사해요.");
     }
   };
 
@@ -256,7 +282,7 @@ export default function Home() {
 
   if (isScanMode) {
     return (
-      <main className="relative flex min-h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100">
+      <main className="relative flex min-h-dvh flex-col overflow-hidden bg-bg-base text-text-primary">
         <Scanner
           onExitSession={() => {
             setIsScanMode(false);
@@ -270,139 +296,187 @@ export default function Home() {
   }
 
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-zinc-950 text-zinc-100">
+    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-bg-base text-text-primary">
       <AppHeader />
       <OnlineStatusBanner />
 
-      <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-5 pb-4 pt-2">
+      <div className="mx-auto flex min-h-0 w-full max-w-[var(--container-max)] flex-1 flex-col px-5 pb-6 pt-4">
         {adminView === "main" && (
-          <section className="flex min-h-0 flex-1 flex-col">
-            <div className="rounded-3xl border border-amber-500/15 bg-linear-to-b from-zinc-900 via-zinc-900/95 to-zinc-950 p-5 shadow-2xl shadow-black/30 ring-1 ring-emerald-900/20 sm:p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400/90">
-                {CLUB_NAME}
+          <section className="flex min-h-0 flex-1 flex-col gap-5">
+            <div>
+              <p className="text-[13px] font-semibold text-brand-text">
+                오늘도 잘 와주었어요
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-                {SCHOOL_NAME}
-              </p>
-              <h2 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                장서점검 안내
+              <h2 className="mt-1 text-[26px] font-bold leading-tight tracking-tight text-text-primary">
+                책을 한 권씩{"\n"}찬찬히 점검해볼까요?
               </h2>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-                사서교사 민경 선생님과 함께 도서관을 돌보며, 빛나래 동아리
-                활동으로 장서를 점검할 때 쓰는 도구예요. 바코드(숫자)를 찍을
-                때마다 이 기기에 바로 쌓이고, 진행 방법이 헷갈리면 항상 선생님께
-                여쭤 보세요. 데이터는 이 앱 안에서 복사한 뒤, 메신저로
-                선생님께 붙여 넣어내면 돼요.
+              <p className="mt-3 text-[14px] leading-relaxed text-text-secondary">
+                사서교사 민경 선생님과 함께 도서관을 돌보는 빛나래의 점검
+                도구예요. 바코드를 찍을 때마다 이 기기에 바로 저장돼요.
               </p>
             </div>
 
             <div
-              className="mt-4 rounded-2xl border border-zinc-800/90 bg-zinc-900/50 px-4 py-3 sm:py-4"
+              className="rounded-2xl bg-bg-subtle p-4"
               aria-label="이용 안내"
             >
-              <p className="text-xs font-semibold text-zinc-200">
-                이렇게 쓰면 편해요
-              </p>
-              <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-zinc-300">
-                <li className="flex gap-2">
-                  <span className="shrink-0 text-emerald-400" aria-hidden>
-                    ·
-                  </span>
+              <ul className="space-y-2.5 text-[13px] leading-relaxed text-text-secondary">
+                <li className="flex gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+                  />
                   <span>
-                    첫 화면에서는 카메라가 꺼져 있어요.{" "}
-                    <span className="text-zinc-100">장서점검 시작</span>을 누른
-                    뒤에만 켜져요.
+                    <span className="font-semibold text-text-primary">
+                      장서점검 시작
+                    </span>
+                    을 누른 뒤에만 카메라가 켜져요.
                   </span>
                 </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 text-emerald-400" aria-hidden>
-                    ·
-                  </span>
+                <li className="flex gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+                  />
                   <span>
-                    저장되는 건 <span className="text-zinc-100">숫자만</span>{" "}
-                    있는 바코드예요. (QR·글자 섞인 코드는 넘어가요.)
+                    <span className="font-semibold text-text-primary">
+                      숫자만
+                    </span>{" "}
+                    있는 바코드가 저장돼요. (QR이나 글자 섞인 코드는 넘어가요.)
                   </span>
                 </li>
-                <li className="flex gap-2">
-                  <span className="shrink-0 text-emerald-400" aria-hidden>
-                    ·
-                  </span>
+                <li className="flex gap-2.5">
+                  <span
+                    aria-hidden
+                    className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+                  />
                   <span>
-                    데이터는 이 브라우저 안(로컬)에만 남아요. Wi-Fi가 불안정해도
-                    찍은 순간부터 저장돼요.
+                    기록은 이 기기에만 남아요. Wi-Fi가 끊겨도 찍은 순간부터
+                    저장돼요.
                   </span>
                 </li>
               </ul>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={startWork}
-                className="flex min-h-14 items-center justify-center rounded-3xl bg-emerald-600 px-4 py-4 text-lg font-semibold text-white shadow-xl shadow-emerald-950/40 active:bg-emerald-700"
-              >
-                장서점검 시작
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAdminView("list");
-                  pushScreenHistory("list");
-                }}
-                className="flex min-h-14 items-center justify-center rounded-3xl border border-zinc-700 bg-zinc-900 px-4 py-4 text-base font-semibold text-zinc-100 active:bg-zinc-800"
-              >
+            <button
+              type="button"
+              onClick={startWork}
+              className="press flex min-h-[52px] items-center justify-center rounded-xl bg-brand px-4 py-3.5 text-[16px] font-semibold text-text-on-brand shadow-md hover:bg-brand-hover"
+            >
+              장서점검 시작
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAdminView("list");
+                pushScreenHistory("list");
+              }}
+              className="press flex min-h-[52px] items-center justify-between gap-2 rounded-xl bg-bg-subtle px-4 py-3.5 text-[15px] font-semibold text-text-primary"
+              aria-label={`지난 점검 기록 ${totalRecords}개 보기`}
+            >
+              <span className="inline-flex items-center gap-2">
                 지난 점검 기록
-                {totalRecords > 0 ? ` (${totalRecords})` : ""}
-              </button>
-            </div>
+                {totalRecords > 0 && (
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-brand-subtle px-2 text-[12px] font-bold text-brand-text">
+                    {totalRecords}
+                  </span>
+                )}
+              </span>
+              <ChevronRightIcon className="h-5 w-5 text-text-tertiary" />
+            </button>
           </section>
         )}
 
         {adminView === "list" && (
-          <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40">
-            <header className="flex items-center gap-2 border-b border-zinc-800 px-3 py-3 sm:px-4">
+          <section className="flex min-h-0 flex-1 flex-col">
+            <header className="flex items-center gap-1 pb-3">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex min-h-12 shrink-0 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 px-5 py-3 text-sm font-medium text-zinc-200 active:bg-zinc-800"
+                aria-label="뒤로 가기"
+                className="press flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-bg-subtle"
               >
-                뒤로
+                <ChevronLeftIcon className="h-6 w-6 text-text-primary" />
               </button>
-              <div className="min-w-0 flex-1 text-center">
-                <h2 className="truncate text-base font-semibold text-zinc-100">
-                  세션 관리 · 지난 점검
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-[18px] font-bold text-text-primary">
+                  지난 점검 기록
                 </h2>
-                <p className="text-[11px] text-zinc-400">
-                  항목을 눌러 보기·편집·복사
+                <p className="text-[12px] text-text-tertiary">
+                  눌러서 내용을 보거나 복사해요
                 </p>
               </div>
-              <span className="w-[64px] shrink-0 sm:w-[72px]" aria-hidden />
             </header>
+
             <div className="min-h-0 flex-1 overflow-y-auto">
               {sessionKeys.length === 0 ? (
-                <p className="px-4 py-6 text-sm leading-relaxed text-zinc-300">
-                  아직 저장된 점검이 없어요.{" "}
-                  <span className="text-zinc-100">장서점검 시작</span>으로
-                  한 번 점검해 보면 여기에 날짜별로 쌓여요.
-                </p>
+                <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+                  <div
+                    aria-hidden
+                    className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-subtle"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-8 w-8 text-brand"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-[15px] font-semibold text-text-primary">
+                    아직 점검한 책이 없어요
+                  </p>
+                  <p className="max-w-xs text-[13px] leading-relaxed text-text-secondary">
+                    장서점검을 시작하면 끝낸 점검이 날짜별로 여기에 쌓여요.
+                  </p>
+                </div>
               ) : (
-                <ul className="divide-y divide-zinc-800">
-                  {sessionKeys.map((key) => (
-                    <li key={key}>
-                      <button
-                        type="button"
-                        onClick={() => openDetail(key)}
-                        className="flex min-h-[3.75rem] w-full flex-col items-start justify-center px-4 py-4 text-left active:bg-zinc-800/70"
-                      >
-                        <span className="text-sm font-semibold text-zinc-100">
-                          {formatSessionLabel(key)}
-                        </span>
-                        <span className="text-xs text-zinc-400">
-                          바코드 {sessionLineCounts[key] ?? 0}권
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                <ul className="flex flex-col gap-2 pb-2">
+                  {sessionKeys.map((key) => {
+                    const count = sessionLineCounts[key] ?? 0;
+                    return (
+                      <li key={key}>
+                        <button
+                          type="button"
+                          onClick={() => openDetail(key)}
+                          className="press flex w-full items-center gap-3 rounded-2xl bg-bg-subtle px-4 py-3.5 text-left"
+                        >
+                          <div
+                            aria-hidden
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-subtle"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-5 w-5 text-brand"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                            </svg>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[14px] font-semibold text-text-primary">
+                              {formatSessionLabel(key)}
+                            </p>
+                            <p className="text-[12px] tabular-nums text-text-tertiary">
+                              {count}권 점검
+                            </p>
+                          </div>
+                          <ChevronRightIcon className="h-5 w-5 shrink-0 text-text-tertiary" />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -410,29 +484,27 @@ export default function Home() {
         )}
 
         {adminView === "detail" && selectedKey && (
-          <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40">
-            <header className="flex items-center gap-2 border-b border-zinc-800 px-3 py-3 sm:px-4">
+          <section className="flex min-h-0 flex-1 flex-col">
+            <header className="flex items-center gap-1 pb-3">
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex min-h-12 shrink-0 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 px-5 py-3 text-sm font-medium text-zinc-200 active:bg-zinc-800"
+                aria-label="뒤로 가기"
+                className="press flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-bg-subtle"
               >
-                뒤로
+                <ChevronLeftIcon className="h-6 w-6 text-text-primary" />
               </button>
-              <div className="min-w-0 flex-1 text-center">
-                <h2 className="truncate text-sm font-semibold text-zinc-100">
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-[15px] font-bold text-text-primary">
                   {formatSessionLabel(selectedKey)}
                 </h2>
-                <p className="text-[11px] text-zinc-400">
+                <p className="text-[12px] tabular-nums text-text-tertiary">
                   바코드 {selectedCount}권
                 </p>
               </div>
-              <span
-                className="w-[64px] shrink-0 sm:w-[72px]"
-                aria-hidden
-              />
             </header>
-            <div className="flex flex-wrap items-center gap-3 px-4 py-4">
+
+            <div className="flex flex-col gap-2.5 pb-3">
               <button
                 type="button"
                 onClick={onCopy}
@@ -440,29 +512,30 @@ export default function Home() {
                 title={
                   canCopyDetail
                     ? undefined
-                    : "복사할 숫자 줄이 없어요. 먼저 점검을 진행하거나 아래에 번호를 적어 주세요."
+                    : "복사할 번호가 없어요. 먼저 점검을 진행하거나 아래에 번호를 적어 주세요."
                 }
-                className={`flex min-h-14 items-center justify-center gap-2 rounded-2xl px-5 text-base font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                aria-live="polite"
+                className={`press flex min-h-[52px] items-center justify-center gap-2 rounded-xl px-5 text-[15px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${
                   copyDone
-                    ? "bg-emerald-600 text-white"
-                    : "border border-zinc-600 bg-zinc-900 text-zinc-100 active:bg-zinc-800"
+                    ? "bg-accent text-text-on-brand"
+                    : "bg-brand text-text-on-brand hover:bg-brand-hover"
                 }`}
               >
-                <ClipboardIcon className="h-5 w-5 shrink-0 opacity-90" />
-                {copyDone ? "복사 완료" : "클립보드 복사"}
+                <ClipboardIcon className="h-5 w-5 shrink-0" />
+                {copyDone ? "복사했어요" : "클립보드에 복사하기"}
               </button>
               <button
                 type="button"
                 onClick={onDelete}
-                className="min-h-14 rounded-2xl border border-red-900/70 bg-red-950/40 px-5 text-base font-semibold text-red-100 active:bg-red-950/70"
+                className="press min-h-[52px] rounded-xl bg-bg-subtle px-5 text-[14px] font-semibold text-danger hover:bg-danger-bg"
               >
-                이 점검 삭제하기
+                이 점검 기록 지우기
               </button>
             </div>
-            <div className="min-h-0 flex-1 px-4 pb-4">
-              <p className="mb-2 text-xs leading-relaxed text-zinc-400">
-                선생님이 정한 방식대로 붙여 넣거나 수정해요. 한 줄에 번호 하나씩이면
-                복사하기 편해요.
+
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className="mb-2 text-[12px] leading-relaxed text-text-tertiary">
+                한 줄에 번호 하나씩 적으면 복사할 때 깔끔해요.
               </p>
               <textarea
                 value={selectedText}
@@ -470,14 +543,14 @@ export default function Home() {
                 spellCheck={false}
                 autoCorrect="off"
                 autoComplete="off"
-                className="h-full min-h-[40dvh] w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-3 font-mono text-sm text-zinc-100 outline-none ring-emerald-500/30 focus:ring-2"
+                className="h-full min-h-[40dvh] w-full resize-none rounded-xl border border-border-default bg-bg-input px-3.5 py-3 font-mono text-[15px] leading-relaxed tabular-nums text-text-primary outline-none focus:border-brand"
               />
             </div>
           </section>
         )}
       </div>
 
-      <AppFooter className="mt-auto" />
+      {adminView === "main" && <AppFooter className="mt-auto" />}
     </main>
   );
 }

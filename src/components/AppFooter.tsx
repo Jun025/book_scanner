@@ -8,23 +8,23 @@ type AppFooterProps = {
 export default function AppFooter({ className = "" }: AppFooterProps) {
   return (
     <footer
-      className={`border-t border-amber-500/10 bg-zinc-950/80 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] ${className}`}
+      className={`border-t border-border-default bg-bg-subtle px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] ${className}`}
     >
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
-        <p className="order-2 text-[11px] leading-relaxed text-zinc-500 sm:order-1">
-          동국대학교사범대학부속가람고등학교 · 도서부 동아리 빛나래
-        </p>
+      <div className="mx-auto flex w-full max-w-[var(--container-max)] flex-col items-center gap-3 text-center">
         <a
           href={INSTAGRAM_GARAM_LIB_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="order-1 inline-flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-2xl border border-pink-500/30 bg-zinc-900/80 px-4 py-3 text-sm font-medium text-pink-100 transition active:bg-zinc-800 sm:order-2"
+          aria-label="가람고 도서관 인스타그램 새 창으로 열기"
+          className="press inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border-default bg-bg-card px-4 py-2 text-[13px] font-semibold text-text-secondary hover:border-brand hover:text-brand"
         >
-          <InstagramIcon className="h-6 w-6 shrink-0 text-pink-400" />
-          <span className="tabular-nums">도서관 인스타</span>
+          <InstagramIcon className="h-4 w-4 shrink-0" />
+          <span>도서관 인스타</span>
         </a>
+        <p className="text-[11px] leading-relaxed text-text-tertiary">
+          동국대학교사범대학부속가람고등학교 · 도서부 동아리 빛나래
+        </p>
       </div>
     </footer>
   );
 }
-

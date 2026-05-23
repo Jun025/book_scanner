@@ -11,28 +11,26 @@ type AppHeaderProps = {
 export default function AppHeader({ rightSlot, className = "" }: AppHeaderProps) {
   return (
     <header
-      className={`flex min-h-[3.5rem] items-center gap-3 border-b border-amber-500/15 bg-linear-to-r from-zinc-950 via-zinc-900/95 to-zinc-950 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md sm:px-4 ${className}`}
+      className={`sticky top-0 z-30 flex min-h-[var(--header-height)] items-center gap-3 border-b border-border-default bg-bg-base/90 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md ${className}`}
     >
       <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-400/35 bg-zinc-900/90 text-center text-[0.65rem] font-semibold leading-tight text-amber-100/90 shadow-inner shadow-amber-900/20"
-        aria-label="학교 로고 자리(추후 이미지로 교체)"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-subtle text-[10px] font-bold leading-tight text-brand-text"
+        aria-label="동대부가람고 도서부 빛나래"
       >
-        동대부
-        <br />
-        가람고
+        가람
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-amber-400/85">
+        <p className="text-[11px] font-semibold tracking-wide text-text-tertiary">
           도서부 빛나래
         </p>
-        <h1 className="truncate text-base font-bold tracking-tight text-white sm:text-lg">
+        <h1 className="truncate text-[17px] font-bold tracking-tight text-text-primary">
           {SERVICE_TITLE}
         </h1>
       </div>
       {rightSlot != null ? (
         <div className="flex shrink-0 items-center gap-2">{rightSlot}</div>
       ) : (
-        <span className="w-2 shrink-0" aria-hidden />
+        <span className="w-1 shrink-0" aria-hidden />
       )}
     </header>
   );
