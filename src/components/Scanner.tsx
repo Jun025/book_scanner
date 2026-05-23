@@ -690,7 +690,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                     aria-expanded={debugInfoOpen}
                     aria-controls="scan-debug-info-dialog"
                     onClick={() => setDebugInfoOpen(true)}
-                    className="press flex h-11 w-11 items-center justify-center rounded-full bg-bg-subtle text-text-secondary"
+                    className="press flex h-11 w-11 items-center justify-center rounded-full bg-bg-input text-text-secondary active:bg-border-default"
                   >
                     <svg
                       viewBox="0 0 24 24"
@@ -702,15 +702,15 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                       strokeLinejoin="round"
                       aria-hidden
                     >
-                      <circle cx="12" cy="12" r="9" />
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
                       <path d="M12 8h.01" />
-                      <path d="M11 12h1v5h1" />
                     </svg>
                   </button>
                   <button
                     type="button"
                     onClick={handleExitSession}
-                    className="press min-h-11 rounded-full bg-bg-subtle px-4 text-[14px] font-semibold text-text-primary"
+                    className="press min-h-11 rounded-full bg-bg-input px-4 text-[14px] font-semibold text-text-primary active:bg-border-default"
                   >
                     점검 중단
                   </button>
@@ -724,8 +724,8 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               className="shrink-0 border-b border-border-default bg-bg-base px-4 pb-3 pt-2"
               aria-live="polite"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
+              <div className="flex items-stretch justify-between gap-2">
+                <div className="min-w-0 flex-1 rounded-xl bg-bg-subtle px-3 py-2">
                   <p className="text-[11px] font-semibold text-text-tertiary">
                     지금까지 점검
                   </p>
@@ -907,7 +907,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
               <button
                 type="button"
                 onClick={enterSessionEditMode}
-                className="press flex min-h-11 shrink-0 items-center justify-center rounded-full bg-bg-subtle px-5 text-[14px] font-semibold text-text-primary"
+                className="press flex min-h-11 shrink-0 items-center justify-center rounded-full bg-bg-input px-5 text-[14px] font-semibold text-text-primary active:bg-border-default"
               >
                 직접 수정
               </button>
@@ -1020,7 +1020,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
             <button
               type="button"
               onClick={() => setDebugInfoOpen(false)}
-              className="press mt-5 min-h-[52px] w-full rounded-xl bg-bg-subtle px-4 text-[15px] font-semibold text-text-primary"
+              className="press mt-5 min-h-[52px] w-full rounded-xl bg-bg-input px-4 text-[15px] font-semibold text-text-primary active:bg-border-default"
             >
               닫기
             </button>
