@@ -778,7 +778,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
             <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               {showCameraArea && (
                 <div
-                  className={`relative z-20 w-full min-w-0 flex-1 overflow-hidden bg-gray-900 ${
+                  className={`relative z-20 w-full min-w-0 flex-1 overflow-hidden bg-[var(--gray-900)] ${
                     sessionEditMode ? "min-h-[38dvh]" : "min-h-[44dvh]"
                   }`}
                 >
@@ -868,7 +868,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
           className={`pointer-events-none fixed left-3 right-3 z-[90] mx-auto max-w-md rounded-xl px-4 py-3 text-center text-[14px] font-medium shadow-lg ${
             toast.tone === "success"
               ? "bg-[var(--magnolia-600)] text-white"
-              : "bg-[var(--gray-900)] text-white"
+              : "bg-toast-info-bg text-white"
           } ${
             sessionEditMode
               ? "bottom-[min(42vh,360px)]"

@@ -113,6 +113,21 @@ const ChevronRightIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const CheckIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M5 12l5 5L20 7" />
+  </svg>
+);
+
 export default function Home() {
   const activeSessionKey = useScannerStore((s) => s.activeSessionKey);
   const beginInventorySession = useScannerStore((s) => s.beginInventorySession);
@@ -445,7 +460,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={() => openDetail(key)}
-                          className="press flex w-full items-center gap-3 rounded-2xl bg-bg-subtle px-4 py-3.5 text-left"
+                          className="press flex w-full items-center gap-3 rounded-2xl bg-bg-subtle px-4 py-3.5 text-left active:bg-bg-input"
                         >
                           <div
                             aria-hidden
@@ -521,7 +536,11 @@ export default function Home() {
                     : "bg-brand text-text-on-brand hover:bg-brand-hover"
                 }`}
               >
-                <ClipboardIcon className="h-5 w-5 shrink-0" />
+                {copyDone ? (
+                  <CheckIcon className="h-5 w-5 shrink-0" />
+                ) : (
+                  <ClipboardIcon className="h-5 w-5 shrink-0" />
+                )}
                 {copyDone ? "복사했어요" : "클립보드에 복사하기"}
               </button>
               <button
@@ -540,6 +559,7 @@ export default function Home() {
               <textarea
                 value={selectedText}
                 onChange={(e) => onChangeDetail(e.target.value)}
+                aria-label="점검 기록 편집"
                 spellCheck={false}
                 autoCorrect="off"
                 autoComplete="off"
@@ -550,7 +570,7 @@ export default function Home() {
         )}
       </div>
 
-      {adminView === "main" && <AppFooter className="mt-auto" />}
+      <AppFooter className="mt-auto" />
     </main>
   );
 }
