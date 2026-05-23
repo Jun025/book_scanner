@@ -755,7 +755,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                     onClick={handleExitSession}
                     className="press min-h-11 rounded-full bg-bg-input px-4 text-[14px] font-semibold text-text-primary active:bg-border-default"
                   >
-                    점검 중단
+                    {totalBooks > 0 ? "점검 마치기" : "점검 중단"}
                   </button>
                 </>
               }
