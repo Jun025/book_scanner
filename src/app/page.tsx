@@ -14,6 +14,12 @@ import ClipboardIcon from "@/components/ClipboardIcon";
 import OnlineStatusBanner from "@/components/OnlineStatusBanner";
 import Scanner from "@/components/Scanner";
 import {
+  buildAllSessionsText,
+  buildExportFilename,
+  type ExportResult,
+  shareOrCopyOrDownload,
+} from "@/lib/exportSessions";
+import {
   countSessionLines,
   toPlainSessionText,
 } from "@/lib/sessionText";
@@ -160,8 +166,12 @@ export default function Home() {
   /** 점검 종료 직후 자동으로 해당 세션 상세로 보냈을 때, 상세 화면 상단에
       "사서께 전달하려면 복사하세요" 안내 배너를 한 번만 띄우기 위한 플래그. */
   const [justFinishedSession, setJustFinishedSession] = useState(false);
+  /** B-3 전체 내보내기 결과 — 버튼 라벨을 잠시 결과 문구로 바꿔 사용자가
+      어떤 경로(공유 시트/클립보드/파일)로 처리됐는지 인지하게 한다. */
+  const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const timerRef = useRef<number | null>(null);
   const savedTimerRef = useRef<number | null>(null);
+  const exportTimerRef = useRef<number | null>(null);
   /** `scheduleLeaveHostedApp`이 연쇄 popstate를 일으킬 때 재진입 방지 */
   const skipLeaveEchoRef = useRef(false);
   const didSetupHistoryRef = useRef(false);
@@ -203,6 +213,8 @@ export default function Home() {
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       if (savedTimerRef.current !== null)
         window.clearTimeout(savedTimerRef.current);
+      if (exportTimerRef.current !== null)
+        window.clearTimeout(exportTimerRef.current);
     };
   }, []);
 
@@ -291,6 +303,21 @@ export default function Home() {
        이 호출이 없으면 뒤로가기 시 popstate가 selectedKey=null 상태의 detail로
        돌아가서 빈 화면이 표시된다. */
     window.history.back();
+  };
+
+  const onExportAll = async () => {
+    const text = buildAllSessionsText(sessionKeys);
+    if (!text) return;
+    const filename = buildExportFilename();
+    const result = await shareOrCopyOrDownload(text, filename);
+    if (result === "cancelled") return;
+    setExportResult(result);
+    if (exportTimerRef.current !== null)
+      window.clearTimeout(exportTimerRef.current);
+    exportTimerRef.current = window.setTimeout(
+      () => setExportResult(null),
+      2200
+    );
   };
 
   const onCopy = async () => {
@@ -489,6 +516,46 @@ export default function Home() {
                 </p>
               </div>
             </header>
+
+            {sessionKeys.length > 0 && (
+              <button
+                type="button"
+                onClick={onExportAll}
+                aria-label={`저장된 점검 기록 ${sessionKeys.length}개를 한 번에 보내기`}
+                aria-live="polite"
+                className={`press mb-3 flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 text-[14px] font-semibold ${
+                  exportResult && exportResult !== "failed"
+                    ? "bg-accent text-text-on-brand"
+                    : exportResult === "failed"
+                      ? "bg-danger-bg text-danger"
+                      : "bg-bg-input text-text-primary active:bg-border-default"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M12 16V4" />
+                  <path d="M5 11l7-7 7 7" />
+                  <path d="M5 20h14" />
+                </svg>
+                {exportResult === "shared"
+                  ? "공유 시트를 열었어요"
+                  : exportResult === "copied"
+                    ? "전체 기록을 복사했어요"
+                    : exportResult === "downloaded"
+                      ? "파일로 저장했어요"
+                      : exportResult === "failed"
+                        ? "내보내기가 안 됐어요. 잠시 후 다시 시도해주세요"
+                        : `전체 ${sessionKeys.length}개 한 번에 보내기`}
+              </button>
+            )}
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               {sessionKeys.length === 0 ? (
