@@ -496,8 +496,8 @@ export default function Home() {
                     className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
                   />
                   <span>
-                    기록은 이 기기에만 남아요. Wi-Fi가 끊겨도 찍은 순간부터
-                    저장돼요.
+                    기록은 이 기기에만 남아요. 중간에 인터넷이 끊겨도 점검
+                    기록이 저장돼요.
                   </span>
                 </li>
               </ul>
@@ -661,7 +661,7 @@ export default function Home() {
                               <span>{count}권 점검</span>
                               {showBackupBadge && (
                                 backedUp ? (
-                                  <span className="inline-flex h-5 items-center gap-1 rounded-full bg-bg-input px-2 text-[11px] font-semibold text-text-tertiary">
+                                  <span className="inline-flex h-5 items-center gap-1 rounded-full bg-accent-subtle px-2 text-[11px] font-semibold text-accent-text">
                                     <svg
                                       viewBox="0 0 24 24"
                                       className="h-3 w-3"
@@ -674,15 +674,15 @@ export default function Home() {
                                     >
                                       <path d="M5 12l5 5L20 7" />
                                     </svg>
-                                    보냄
+                                    복사한 적 있음
                                   </span>
                                 ) : (
-                                  <span className="inline-flex h-5 items-center gap-1 rounded-full bg-warning-bg px-2 text-[11px] font-semibold text-warning">
+                                  <span className="inline-flex h-5 items-center gap-1 rounded-full bg-brand-subtle px-2 text-[11px] font-semibold text-brand-text">
                                     <span
                                       aria-hidden
-                                      className="inline-block h-1.5 w-1.5 rounded-full bg-warning"
+                                      className="inline-block h-1.5 w-1.5 rounded-full bg-brand"
                                     />
-                                    아직 안 보냄
+                                    신규
                                   </span>
                                 )
                               )}
