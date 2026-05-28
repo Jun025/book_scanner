@@ -7,8 +7,9 @@ import {
   useRef,
   useState,
 } from "react";
+import ClipboardIcon from "@/components/ClipboardIcon";
 import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
-import { countSessionLines } from "@/lib/sessionText";
+import { countSessionLines, toPlainSessionText } from "@/lib/sessionText";
 import { useScannerStore } from "@/store/useScannerStore";
 
 /** 도서관·상품 공통: 숫자만, 5~13자리 */
@@ -555,6 +556,21 @@ export default function Scanner({ onExitSession }: ScannerProps) {
     onExitSession?.();
   };
 
+  const handleCopyLiveSession = useCallback(async () => {
+    const plain = toPlainSessionText(liveSessionText);
+    if (!plain) return;
+    try {
+      await navigator.clipboard.writeText(plain);
+      showToast(`기록 ${totalBooks}권을 복사했어요`, "success", 1500);
+    } catch {
+      showToast(
+        "복사가 안 됐어요. 잠시 후 다시 시도해주세요",
+        "info",
+        1800
+      );
+    }
+  }, [liveSessionText, totalBooks, showToast]);
+
   return (
     <div className="isolate flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-bg-base text-text-primary">
       {flashKey != null && (
@@ -768,23 +784,36 @@ export default function Scanner({ onExitSession }: ScannerProps) {
                 바코드 {totalBooks}권
               </p>
             </div>
-            {sessionEditMode ? (
-              <button
-                type="button"
-                onClick={exitSessionEditMode}
-                className="press flex min-h-11 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-[14px] font-semibold text-text-on-brand"
-              >
-                수정 완료
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={enterSessionEditMode}
-                className="press flex min-h-11 shrink-0 items-center justify-center rounded-full bg-bg-input px-5 text-[14px] font-semibold text-text-primary active:bg-border-default"
-              >
-                직접 수정
-              </button>
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {totalBooks > 0 && (
+                <button
+                  type="button"
+                  onClick={handleCopyLiveSession}
+                  aria-label={`지금까지 점검한 ${totalBooks}권 복사하기`}
+                  className="press inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full bg-bg-input px-4 text-[14px] font-semibold text-brand-text active:bg-border-default"
+                >
+                  <ClipboardIcon className="h-4 w-4 shrink-0" />
+                  복사
+                </button>
+              )}
+              {sessionEditMode ? (
+                <button
+                  type="button"
+                  onClick={exitSessionEditMode}
+                  className="press flex min-h-11 shrink-0 items-center justify-center rounded-full bg-accent px-5 text-[14px] font-semibold text-text-on-brand"
+                >
+                  수정 완료
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={enterSessionEditMode}
+                  className="press flex min-h-11 shrink-0 items-center justify-center rounded-full bg-bg-input px-5 text-[14px] font-semibold text-text-primary active:bg-border-default"
+                >
+                  직접 수정
+                </button>
+              )}
+            </div>
           </div>
           {sessionEditMode && (
             <p className="mb-2 text-[12px] leading-snug text-text-tertiary">

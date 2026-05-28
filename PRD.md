@@ -47,12 +47,12 @@
 - **키 규칙:** `book-scanner:session:` + **점검 시작 시각의 ISO8601 문자열** (예: `book-scanner:session:2026-04-07T12:34:56.789Z`). 한 세션의 모든 스캔은 **동일 키**의 **단일 문자열 값**에 `\n`으로 누적.
 - **즉시 저장:** `appendDigitScanToActiveSession`이 매 성공 시 `localStorage` 기존 값을 읽고 **줄 append 후 `setItem`**. 이탈·종료와 무관하게 **스캔 즉시 반영**.
 - **Zustand 역할:** 실행 중 UI 메타(`activeSessionKey`, `liveSessionText`, `lastCapturedCode` 등)만 관리. 스캔 화면 노출은 페이지의 **`isScanMode`** 등으로 구분. **스캔 본문은 `persist` 미사용** — 원본은 항상 해당 세션 키의 `localStorage` 값.
-- **점검 중 표시:** 하단은 보기 모드(`readOnly`)·**직접 수정** 모드(`setLiveSessionText`로 즉시 `localStorage` 반영, `_lastAccepted` 초기화). **지난 점검 상세**도 `writeSessionRaw`·textarea. **클립보드 복사는 상세만**.
+- **점검 중 표시:** 하단은 보기 모드(`readOnly`)·**직접 수정** 모드(`setLiveSessionText`로 즉시 `localStorage` 반영, `_lastAccepted` 초기화). **지난 점검 상세**도 `writeSessionRaw`·textarea. **점검 진행 화면에도 "복사" 버튼**을 라벨 행에 두어 권수>0일 때 현재까지 기록을 클립보드에 복사 가능(2026-05-28 추가, 데이터 유실 방지 1차 안전망).
 
 ### ④ 시작 전 · 이력 · 내비게이션
 - **메인 정리:** 메인 화면 진입 시(표시 전) `removeSessionKeysWithZeroBarcodes()`로 **바코드 0건** 세션 키를 `localStorage`에서 제거.
 - **이전 점검 목록:** `listSessionStorageKeys()`로 접두사 일치 키를 나열(최신순), 항목 탭 시 상세에서 **textarea 조회·수정**(`writeSessionRaw`), **삭제**(확인 후). 목록 행에서는 **복사 버튼 없음**.
-- **클립보드:** **`Navigator.clipboard`** 복사는 **지난 점검 상세**에서만 제공. 점검 진행 중·목록 화면에서는 복사하지 않음.
+- **클립보드:** **`Navigator.clipboard`** 복사는 **(1) 점검 진행 중 라벨 행의 "복사" 버튼**(현재까지 기록 — 2026-05-28 추가, 데이터 유실 방지 1차 안전망), **(2) 지난 점검 상세의 "클립보드에 복사하기"**(원래부터 존재) 두 곳에서 제공. 목록 행에서는 복사하지 않음(잘못된 항목의 우발적 복사 방지).
 - **클라이언트 전용:** 목록/편집은 `typeof window` 이후·마운트 이후에 수행(SSR에서 `localStorage` 직접 접근하지 않음).
 - **첫 화면 뒤로가기:** 히스토리 루트에서 뒤로가기 시 **확인 대화상자 없이** 앱 이탈·종료 시퀀스(`scheduleLeaveHostedApp`) 실행.
 
