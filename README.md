@@ -18,9 +18,11 @@
 - **오인식 방지** — 유효 코드가 2회 연속 동일할 때만 확정 저장(멀티 프레임 합의).
 - **중앙 ROI 스캔(Quagga)** — 비디오 중앙을 **가로 90% × 세로 72%**로 크롭해 디코딩하고, 뷰파인더 가이드와 동일 비율. `decodeSingle`은 버퍼 **1280**·`halfSample: false`·`patchSize: "large"`로 작은 바코드 인식을 보강.
 - **카메라** — 가능한 경우 고해상도·디지털 줌·연속 초점 제약을 시도(미지원 기기는 무시).
-- **피드백** — 진동(지원 기기), 테두리 녹색 플래시, 토스트, Web Audio 비프(`useScanBeeps`).
+- **피드백** — 진동(지원 기기), 테두리 녹색 플래시, 토스트. (도서관 환경 소음 부담을 이유로 청각 비프는 사용하지 않는다.)
 - **라이브 표시** — 스캔 중 권수·「방금 인식」대형 숫자 + 강조 애니메이션.
-- **디버그 팝업 분리** — 상단 `i` 버튼으로만 디버그 정보를 열어 카메라 화면을 넓게 유지.
+- **헤더 정책** — 헤더("도서부 빛나래 / 빛나래 장서점검")는 **홈 화면에만 노출**. 점검 진행·지난 점검 목록/상세에는 헤더를 두지 않아 카메라·콘텐츠 영역을 넓게 쓴다.
+- **기기 정보(`i`) 버튼** — 푸터의 인스타 링크 옆 `DebugInfoButton`에서 열린다. 브라우저·OS·진동 지원 여부를 보여주는 작은 다이얼로그.
+- **점검 종료 버튼** — 진행 화면 상단 "지금까지 점검" 카드 **왼쪽의 셰브런-백 아이콘**(권수에 따라 aria-label이 "점검 마치고"/"점검 중단하고 이전 화면으로"로 분기). 확인 팝업 없이 즉시 종료.
 - **카메라 실패 시** — 안내 목업과「카메라 다시 연결하기」버튼(가상 숫자 입력 데모는 없음).
 
 ## 기술 스택
@@ -56,10 +58,13 @@ pnpm start
 
 - `src/app/layout.tsx` — 폰트·viewport·PWA 메타
 - `src/app/page.tsx` — 메인·지난 점검 목록/상세·스캔 모드 전환, 히스토리·뒤로가기·클립보드(상세만)
-- `src/components/Scanner.tsx` — 카메라/목업, 라이브 패널, 누적 보기·직접 수정 토글, 토스트, 비프
-- `src/components/AppHeader.tsx` / `AppFooter.tsx` — 공통 헤더, 푸터(인스타 링크 등)
+- `src/components/Scanner.tsx` — 카메라/목업, 라이브 패널, 누적 보기·직접 수정 토글, 토스트
+- `src/components/AppHeader.tsx` — 공통 헤더(홈에서만 노출)
+- `src/components/AppFooter.tsx` — 푸터(인스타 링크 + 기기 정보 버튼)
+- `src/components/DebugInfoButton.tsx` — 푸터에서 열리는 기기 정보 다이얼로그(브라우저·OS·진동)
+- `src/components/OnlineStatusBanner.tsx` — 오프라인 상태 안내 띠
+- `src/hooks/useScreenWakeLock.ts` — 카메라 동작 중 화면 꺼짐 방지
 - `src/store/useScannerStore.ts` — 세션 생명주기, `localStorage` append/동기, 세션 키·빈 세션 정리
-- `src/hooks/useScanBeeps.ts` — 스캔 성공/실패 톤
 - `src/lib/sessionText.ts` — 줄 수·클립보드용 정규화
 - `src/lib/brand.ts` — 푸터 외부 링크 상수
 - `public/manifest.json` — PWA 메타데이터
