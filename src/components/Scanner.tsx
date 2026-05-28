@@ -7,9 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import AppHeader from "@/components/AppHeader";
-import OnlineStatusBanner from "@/components/OnlineStatusBanner";
-import { useScanBeeps } from "@/hooks/useScanBeeps";
 import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
 import { countSessionLines } from "@/lib/sessionText";
 import { useScannerStore } from "@/store/useScannerStore";
@@ -17,8 +14,8 @@ import { useScannerStore } from "@/store/useScannerStore";
 /** 도서관·상품 공통: 숫자만, 5~13자리 */
 const VALID_BARCODE = /^\d{5,13}$/;
 
-/** 카메라가 같은 프레임에서 비숫자를 연속 디코딩할 때 비프·토스트 스팸 방지 */
-const INVALID_BEEP_COOLDOWN_MS = 900;
+/** 카메라가 같은 프레임에서 비숫자를 연속 디코딩할 때 토스트 스팸 방지 */
+const INVALID_SCAN_TOAST_COOLDOWN_MS = 900;
 /** 중복 토스트가 너무 자주 갱신되어 가려지지 않도록 짧게 누른다 */
 const DUPLICATE_TOAST_COOLDOWN_MS = 1200;
 const SCAN_INTERVAL_MS = 100;
@@ -28,8 +25,6 @@ const UNSUPPORTED_MESSAGE =
 const CAMERA_ERROR_TITLE = "카메라를 켤 수 없어요";
 const CAMERA_ERROR_HINT =
   "설정에서 카메라 사용을 허용한 뒤 이 화면으로 돌아오면 다시 연결할게요.";
-/** 도서관 등 조용한 환경을 위해 비프만 끄는 설정. 진동/시각 피드백은 유지. */
-const SOUND_MUTED_STORAGE_KEY = "book-scanner:settings:sound-muted";
 const BARCODE_FORMATS = [
   "ean_13",
   "ean_8",
@@ -99,10 +94,6 @@ async function applyVideoTrackScanOptimizations(track: MediaStreamTrack) {
     /* iOS Safari 등: 미지원 시 카메라는 그대로 사용 */
   }
 }
-type ClientInfo = {
-  browser: string;
-  os: string;
-};
 type QuaggaResultLike = {
   codeResult?: {
     code?: string | null;
@@ -139,58 +130,21 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   const streamRef = useRef<MediaStream | null>(null);
   const scanTimerRef = useRef<number | null>(null);
   const detectBusyRef = useRef(false);
-  const lastInvalidBeepAt = useRef(0);
+  const lastInvalidScanToastAt = useRef(0);
   const lastDuplicateToastAt = useRef(0);
   const toastTimerRef = useRef<number | null>(null);
   const activeEngineRef = useRef<"native" | "quagga" | null>(null);
   const scanBufferRef = useRef<string[]>([]);
-  const hasVibrationSupportRef = useRef(false);
-  const debugDialogRef = useRef<HTMLDivElement | null>(null);
-  const debugTriggerRef = useRef<HTMLButtonElement | null>(null);
-
-  const { playSuccess, playFailure, prime } = useScanBeeps();
 
   const [mode, setMode] = useState<"idle" | "loading" | "camera" | "mock">(
     "idle"
   );
   const [mockTitle, setMockTitle] = useState(CAMERA_ERROR_TITLE);
   const [mockMessage, setMockMessage] = useState(CAMERA_ERROR_HINT);
-  const [clientInfo, setClientInfo] = useState<ClientInfo>({
-    browser: "확인 중...",
-    os: "확인 중...",
-  });
-  const [vibrationSupportLabel, setVibrationSupportLabel] =
-    useState("확인 중...");
-  const [detectorEngine, setDetectorEngine] = useState("초기화 전");
   const [flashKey, setFlashKey] = useState<number | null>(null);
   const [toast, setToast] = useState<{ tone: "success" | "info"; text: string } | null>(null);
   const [cameraRetryToken, setCameraRetryToken] = useState(0);
-  const [debugInfoOpen, setDebugInfoOpen] = useState(false);
   const [sessionEditMode, setSessionEditMode] = useState(false);
-  const [soundMuted, setSoundMuted] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      setSoundMuted(window.localStorage.getItem(SOUND_MUTED_STORAGE_KEY) === "1");
-    } catch {
-      /* private mode 등 — 기본값 유지 */
-    }
-  }, []);
-
-  const toggleSoundMuted = useCallback(() => {
-    setSoundMuted((prev) => {
-      const next = !prev;
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(SOUND_MUTED_STORAGE_KEY, next ? "1" : "0");
-        }
-      } catch {
-        /* 저장 실패해도 런타임 상태는 토글된다 */
-      }
-      return next;
-    });
-  }, []);
 
   const inSession = activeSessionKey !== null;
   const totalBooks = countSessionLines(liveSessionText);
@@ -225,107 +179,14 @@ export default function Scanner({ onExitSession }: ScannerProps) {
     sessionTextareaRef.current?.blur();
   }, []);
 
-  useEffect(() => {
-    if (!inSession) return;
-    prime();
-  }, [inSession, prime]);
-
-  useEffect(() => {
-    if (typeof navigator === "undefined") return;
-    const ua = navigator.userAgent;
-
-    const browser = (() => {
-      const edge = ua.match(/Edg\/([\d.]+)/);
-      if (edge) return `Edge ${edge[1]}`;
-      const crios = ua.match(/CriOS\/([\d.]+)/);
-      if (crios) return `Chrome ${crios[1]}`;
-      const chrome = ua.match(/Chrome\/([\d.]+)/);
-      if (chrome) return `Chrome ${chrome[1]}`;
-      const firefox = ua.match(/FxiOS\/([\d.]+)|Firefox\/([\d.]+)/);
-      if (firefox) return `Firefox ${firefox[1] ?? firefox[2]}`;
-      const safari = ua.match(/Version\/([\d.]+).*Safari/);
-      if (safari) return `Safari ${safari[1]}`;
-      return "알 수 없는 브라우저";
-    })();
-
-    const os = (() => {
-      const ios = ua.match(/OS (\d+[_\d]*) like Mac OS X/);
-      if (ios) return `iOS ${ios[1].replaceAll("_", ".")}`;
-      const android = ua.match(/Android ([\d.]+)/);
-      if (android) return `Android ${android[1]}`;
-      const mac = ua.match(/Mac OS X ([\d_]+)/);
-      if (mac) return `macOS ${mac[1].replaceAll("_", ".")}`;
-      const windows = ua.match(/Windows NT ([\d.]+)/);
-      if (windows) return `Windows NT ${windows[1]}`;
-      return navigator.platform || "알 수 없는 OS";
-    })();
-
-    setClientInfo({ browser, os });
-    const supportsVibration = typeof navigator.vibrate === "function";
-    hasVibrationSupportRef.current = supportsVibration;
-    setVibrationSupportLabel(supportsVibration ? "지원" : "미지원");
-  }, []);
-
-  /* 다이얼로그 ARIA APG 패턴: ESC 닫기, Tab 트랩, 닫을 때 트리거로 포커스 복귀. */
-  useEffect(() => {
-    if (!debugInfoOpen) return;
-
-    const dialog = debugDialogRef.current;
-    /* 닫을 때 포커스를 돌려놓을 트리거를 effect 시점에 캡처해 두면
-       cleanup 시 ref가 바뀌어도 동일 노드를 가리킬 수 있어요. */
-    const trigger = debugTriggerRef.current;
-
-    /* 다이얼로그 열 때 첫 포커스를 다이얼로그 안 첫 인터랙티브 요소로. */
-    const focusables = () =>
-      dialog
-        ? Array.from(
-            dialog.querySelectorAll<HTMLElement>(
-              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-            )
-          ).filter((el) => !el.hasAttribute("disabled"))
-        : [];
-
-    const initial = focusables();
-    initial[0]?.focus();
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setDebugInfoOpen(false);
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const items = focusables();
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && (active === first || !dialog?.contains(active))) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      trigger?.focus();
-    };
-  }, [debugInfoOpen]);
-
   const vibrateOnSuccess = useCallback(() => {
     if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") {
       return false;
     }
     try {
-      const didVibrate = navigator.vibrate(SUCCESS_VIBRATION_PATTERN);
-      hasVibrationSupportRef.current = didVibrate;
-      return didVibrate;
+      return navigator.vibrate(SUCCESS_VIBRATION_PATTERN);
     } catch {
       /* 지원하지 않는 환경에서는 조용히 무시 */
-      hasVibrationSupportRef.current = false;
       return false;
     }
   }, []);
@@ -353,24 +214,13 @@ export default function Scanner({ onExitSession }: ScannerProps) {
     };
   }, []);
 
-  const maybePlaySuccess = useCallback(() => {
-    if (soundMuted) return;
-    playSuccess();
-  }, [playSuccess, soundMuted]);
-
-  const maybePlayFailure = useCallback(() => {
-    if (soundMuted) return;
-    playFailure();
-  }, [playFailure, soundMuted]);
-
   const triggerFeedback = useCallback(
     (digits: string) => {
-      maybePlaySuccess();
       void vibrateOnSuccess();
       setFlashKey(Date.now());
       showToast(`기록했어요 · ${digits}`, "success", 1500);
     },
-    [maybePlaySuccess, showToast, vibrateOnSuccess]
+    [showToast, vibrateOnSuccess]
   );
 
   const handleDecoded = useCallback(
@@ -379,9 +229,11 @@ export default function Scanner({ onExitSession }: ScannerProps) {
       if (!trimmed) return;
       if (!VALID_BARCODE.test(trimmed)) {
         const now = Date.now();
-        if (now - lastInvalidBeepAt.current >= INVALID_BEEP_COOLDOWN_MS) {
-          lastInvalidBeepAt.current = now;
-          maybePlayFailure();
+        if (
+          now - lastInvalidScanToastAt.current >=
+          INVALID_SCAN_TOAST_COOLDOWN_MS
+        ) {
+          lastInvalidScanToastAt.current = now;
           showToast("숫자가 아니라 넘어갔어요", "info", 1400);
         }
         return;
@@ -398,7 +250,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
         showToast(`방금 찍은 번호예요 · ${trimmed}`, "info", 1400);
       }
     },
-    [appendDigitScanToActiveSession, maybePlayFailure, showToast, triggerFeedback]
+    [appendDigitScanToActiveSession, showToast, triggerFeedback]
   );
 
   const retryCamera = useCallback(() => {
@@ -448,7 +300,6 @@ export default function Scanner({ onExitSession }: ScannerProps) {
       quaggaRef.current = null;
       stopCameraStream();
       setMode("idle");
-      setDetectorEngine("초기화 전");
       return;
     }
 
@@ -493,7 +344,6 @@ export default function Scanner({ onExitSession }: ScannerProps) {
           detectorRef.current = new nativeCtor({ formats: nativeFormats });
           quaggaRef.current = null;
           activeEngineRef.current = "native";
-          setDetectorEngine("Native BarcodeDetector");
         } else {
           const quagga2Pkg = (await import("@ericblade/quagga2")) as {
             default: QuaggaLike;
@@ -501,7 +351,6 @@ export default function Scanner({ onExitSession }: ScannerProps) {
           quaggaRef.current = quagga2Pkg.default;
           detectorRef.current = null;
           activeEngineRef.current = "quagga";
-          setDetectorEngine("Quagga2 Fallback");
         }
       } catch {
         if (!cancelled) {
@@ -720,54 +569,35 @@ export default function Scanner({ onExitSession }: ScannerProps) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {inSession && (
           <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
-            <AppHeader
-              className="shrink-0"
-              rightSlot={
-                <>
-                  <button
-                    type="button"
-                    ref={debugTriggerRef}
-                    id="scan-debug-info-trigger"
-                    aria-label="기기 정보와 소리 설정 열기"
-                    aria-haspopup="dialog"
-                    aria-expanded={debugInfoOpen}
-                    aria-controls="scan-debug-info-dialog"
-                    onClick={() => setDebugInfoOpen(true)}
-                    className="press flex h-11 w-11 items-center justify-center rounded-full bg-bg-input text-text-secondary active:bg-border-default"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 16v-4" />
-                      <path d="M12 8h.01" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExitSession}
-                    className="press min-h-11 rounded-full bg-bg-input px-4 text-[14px] font-semibold text-text-primary active:bg-border-default"
-                  >
-                    {totalBooks > 0 ? "점검 마치기" : "점검 중단"}
-                  </button>
-                </>
-              }
-            />
-            <OnlineStatusBanner />
-
-            {/* 진행 요약 — 토스풍 압축 카드: 총 권수 · 방금 인식 */}
+            {/* 진행 요약 — 뒤로가기 + 총 권수 · 방금 인식 */}
             <div
-              className="shrink-0 border-b border-border-default bg-bg-base px-4 pb-3 pt-2"
+              className="shrink-0 border-b border-border-default bg-bg-base px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
               aria-live="polite"
             >
-              <div className="flex items-stretch justify-between gap-2">
+              <div className="flex items-stretch gap-2">
+                <button
+                  type="button"
+                  onClick={handleExitSession}
+                  aria-label={
+                    totalBooks > 0
+                      ? "점검 마치고 이전 화면으로"
+                      : "점검 중단하고 이전 화면으로"
+                  }
+                  className="press flex w-11 shrink-0 items-center justify-center self-stretch rounded-xl bg-bg-subtle text-text-primary active:bg-bg-input"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M15 6l-6 6 6 6" />
+                  </svg>
+                </button>
                 <div className="min-w-0 flex-1 rounded-xl bg-bg-subtle px-3 py-2">
                   <p className="text-[11px] font-semibold text-text-tertiary">
                     지금까지 점검
@@ -990,87 +820,6 @@ export default function Scanner({ onExitSession }: ScannerProps) {
         </div>
       )}
 
-      {inSession && debugInfoOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/55 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-6"
-          role="presentation"
-          onClick={() => setDebugInfoOpen(false)}
-        >
-          <div
-            ref={debugDialogRef}
-            id="scan-debug-info-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="scan-debug-info-title"
-            className="w-full max-w-md rounded-2xl bg-bg-card p-5 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              id="scan-debug-info-title"
-              className="text-[17px] font-bold text-text-primary"
-            >
-              기기 정보 · 소리 설정
-            </h2>
-
-            <button
-              type="button"
-              onClick={toggleSoundMuted}
-              role="switch"
-              aria-checked={!soundMuted}
-              className={`press mt-4 flex min-h-[60px] w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left ${
-                soundMuted ? "bg-warning-bg" : "bg-bg-subtle"
-              }`}
-            >
-              <span className="min-w-0">
-                <span className="block text-[14px] font-semibold text-text-primary">
-                  스캔 소리
-                </span>
-                <span className="mt-0.5 block text-[12px] leading-snug text-text-secondary">
-                  조용한 곳에서는 꺼두세요. 진동과 화면 깜빡임은 그대로
-                  유지돼요.
-                </span>
-              </span>
-              <span
-                aria-hidden
-                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
-                  soundMuted ? "bg-border-strong" : "bg-accent"
-                }`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                    soundMuted ? "translate-x-1" : "translate-x-6"
-                  }`}
-                />
-              </span>
-            </button>
-
-            <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[12px]">
-              <dt className="text-text-tertiary">브라우저</dt>
-              <dd className="text-right text-text-secondary">
-                {clientInfo.browser}
-              </dd>
-              <dt className="text-text-tertiary">OS</dt>
-              <dd className="text-right text-text-secondary">{clientInfo.os}</dd>
-              <dt className="text-text-tertiary">진동</dt>
-              <dd className="text-right text-text-secondary">
-                {vibrationSupportLabel}
-              </dd>
-              <dt className="text-text-tertiary">스캔 엔진</dt>
-              <dd className="text-right text-text-secondary">
-                {detectorEngine}
-              </dd>
-            </dl>
-
-            <button
-              type="button"
-              onClick={() => setDebugInfoOpen(false)}
-              className="press mt-5 min-h-[52px] w-full rounded-xl bg-bg-input px-4 text-[15px] font-semibold text-text-primary active:bg-border-default"
-            >
-              닫기
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

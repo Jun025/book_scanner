@@ -337,10 +337,20 @@ export default function Home() {
 
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-bg-base text-text-primary">
-      <AppHeader />
-      <OnlineStatusBanner />
+      {adminView === "main" && (
+        <>
+          <AppHeader />
+          <OnlineStatusBanner />
+        </>
+      )}
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[var(--container-max)] flex-1 flex-col px-5 pb-6 pt-4">
+      <div
+        className={`mx-auto flex min-h-0 w-full max-w-[var(--container-max)] flex-1 flex-col px-5 pb-6 ${
+          adminView === "main"
+            ? "pt-4"
+            : "pt-[max(0.75rem,env(safe-area-inset-top))]"
+        }`}
+      >
         {adminView === "main" && (
           <section className="flex min-h-0 flex-1 flex-col gap-5">
             <div>
