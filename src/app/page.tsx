@@ -157,6 +157,9 @@ export default function Home() {
   const [selectedText, setSelectedText] = useState("");
   const [copyDone, setCopyDone] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
+  /** 점검 종료 직후 자동으로 해당 세션 상세로 보냈을 때, 상세 화면 상단에
+      "사서께 전달하려면 복사하세요" 안내 배너를 한 번만 띄우기 위한 플래그. */
+  const [justFinishedSession, setJustFinishedSession] = useState(false);
   const timerRef = useRef<number | null>(null);
   const savedTimerRef = useRef<number | null>(null);
   /** `scheduleLeaveHostedApp`이 연쇄 popstate를 일으킬 때 재진입 방지 */
@@ -255,6 +258,7 @@ export default function Home() {
     setSelectedText(readSessionRaw(key));
     setCopyDone(false);
     setSavedAt(0);
+    setJustFinishedSession(false);
     setAdminView("detail");
     pushScreenHistory("detail");
   };
@@ -295,6 +299,9 @@ export default function Home() {
     try {
       await copyText(plain);
       setCopyDone(true);
+      /* B-2 배너는 "복사하세요"가 목적이었으므로 복사가 끝나면 임무 완수.
+         자동으로 사라져 화면을 깔끔하게 한다. */
+      setJustFinishedSession(false);
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => setCopyDone(false), 1800);
     } catch {
@@ -324,10 +331,34 @@ export default function Home() {
     return (
       <main className="relative flex min-h-dvh flex-col overflow-hidden bg-bg-base text-text-primary">
         <Scanner
-          onExitSession={() => {
+          onExitSession={(preservedKey) => {
             setIsScanMode(false);
-            setAdminView("main");
             refreshList();
+            if (preservedKey) {
+              /* B-2: 1줄 이상 기록이 남은 채 종료한 경우 메인이 아니라 그
+                 세션의 상세로 바로 보낸다 — 메인의 안내 배너로 사용자가
+                 바로 복사할 수 있게 백업을 강하게 권유한다. 모달이 아닌
+                 화면 전환이라 .cursorrules의 "확인 없이 즉시 종료" 원칙과
+                 충돌하지 않는다. history는 scan 항목을 replaceState로
+                 detail 항목으로 바꿔, 사용자가 뒤로가기 한 번이면 메인
+                 으로 자연스럽게 돌아가게 한다. */
+              setSelectedKey(preservedKey);
+              setSelectedText(readSessionRaw(preservedKey));
+              setCopyDone(false);
+              setSavedAt(0);
+              setJustFinishedSession(true);
+              setAdminView("detail");
+              if (typeof window !== "undefined") {
+                window.history.replaceState(
+                  { screen: "detail" },
+                  "",
+                  window.location.href
+                );
+              }
+              return;
+            }
+            /* 권수 0이면 빈 세션 자동 정리 경로 — 종래대로 메인으로. */
+            setAdminView("main");
             window.history.back();
           }}
         />
@@ -553,6 +584,18 @@ export default function Home() {
                 </p>
               </div>
             </header>
+
+            {justFinishedSession && selectedCount > 0 && (
+              <div
+                role="status"
+                className="mb-3 rounded-xl bg-brand-subtle px-4 py-3 text-[13px] leading-relaxed text-brand-text"
+              >
+                방금 점검한{" "}
+                <span className="font-bold tabular-nums">{selectedCount}권</span>
+                이 저장됐어요. 사서 선생님께 전달하려면 아래{" "}
+                <span className="font-bold">복사 버튼</span>을 눌러주세요.
+              </div>
+            )}
 
             <div className="flex flex-col gap-2.5 pb-3">
               <button

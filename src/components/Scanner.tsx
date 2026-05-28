@@ -109,7 +109,13 @@ type QuaggaLike = {
 };
 
 type ScannerProps = {
-  onExitSession?: () => void;
+  /**
+   * 사용자가 종료 버튼(셰브런-백)을 눌러 세션이 끝났을 때 호출.
+   * preservedSessionKey가 전달되면 그 키의 점검 기록이 1줄 이상 저장된
+   * 상태로 보존됐다는 뜻이며, 부모는 백업 권유 흐름(예: 해당 세션 상세로
+   * 바로 이동)을 띄울 수 있다. undefined면 빈 세션 자동 삭제 경로다.
+   */
+  onExitSession?: (preservedSessionKey?: string) => void;
 };
 
 export default function Scanner({ onExitSession }: ScannerProps) {
@@ -552,8 +558,13 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   const showCameraLoading = showCameraArea && mode === "loading";
 
   const handleExitSession = () => {
+    /* totalBooks와 키를 endInventorySession 호출 전에 캡처해야 한다 —
+       종료 후에는 activeSessionKey가 null이 되고 빈 세션은 키 자체가
+       삭제될 수 있다. */
+    const keyAtExit = activeSessionKey;
+    const hadRecords = totalBooks > 0;
     endInventorySession();
-    onExitSession?.();
+    onExitSession?.(hadRecords && keyAtExit ? keyAtExit : undefined);
   };
 
   const handleCopyLiveSession = useCallback(async () => {
