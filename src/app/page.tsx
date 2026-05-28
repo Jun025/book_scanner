@@ -17,7 +17,7 @@ import {
   countSessionLines,
   toPlainSessionText,
 } from "@/lib/sessionText";
-import { isSessionBackedUp } from "@/store/sessionMeta";
+import { isSessionBackedUp, isSessionInTrash } from "@/store/sessionMeta";
 import {
   deleteSessionKey,
   listSessionStorageKeys,
@@ -53,7 +53,7 @@ function formatSessionLabel(key: string): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${time}`;
 }
 
-type Screen = "main" | "scan" | "list" | "detail";
+type Screen = "main" | "scan" | "list" | "detail" | "trash";
 
 function screenFromState(state: unknown): Screen | null {
   if (!state || typeof state !== "object") return null;
@@ -62,7 +62,8 @@ function screenFromState(state: unknown): Screen | null {
     maybe === "main" ||
     maybe === "scan" ||
     maybe === "list" ||
-    maybe === "detail"
+    maybe === "detail" ||
+    maybe === "trash"
   ) {
     return maybe;
   }
@@ -149,14 +150,16 @@ export default function Home() {
   const activeSessionKey = useScannerStore((s) => s.activeSessionKey);
   const beginInventorySession = useScannerStore((s) => s.beginInventorySession);
   const markSessionBackedUp = useScannerStore((s) => s.markSessionBackedUp);
-  /** 메타(백업 여부)는 store에 직접 들어 있지 않으므로, store의 revision을
+  const softDeleteSession = useScannerStore((s) => s.softDeleteSession);
+  const restoreSession = useScannerStore((s) => s.restoreSession);
+  /** 메타(백업 여부·휴지통)는 store에 직접 들어 있지 않으므로, store의 revision을
       구독해 mark가 일어날 때마다 메타 기반 useMemo가 다시 계산되도록 한다. */
   const sessionsRevision = useScannerStore((s) => s.sessionsRevision);
 
   const [isScanMode, setIsScanMode] = useState(false);
-  const [adminView, setAdminView] = useState<"main" | "list" | "detail">(
-    "main"
-  );
+  const [adminView, setAdminView] = useState<
+    "main" | "list" | "detail" | "trash"
+  >("main");
   const [sessionKeys, setSessionKeys] = useState<string[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState("");
@@ -165,6 +168,10 @@ export default function Home() {
   /** 점검 종료 직후 자동으로 해당 세션 상세로 보냈을 때, 상세 화면 상단에
       "사서께 전달하려면 복사하세요" 안내 배너를 한 번만 띄우기 위한 플래그. */
   const [justFinishedSession, setJustFinishedSession] = useState(false);
+  /** 목록 다중 선택 모드 — 활성 시 항목 탭이 선택 토글로 바뀌고 상단·하단
+      액션바가 노출된다. exit 시 selectedKeys도 함께 비운다. */
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Record<string, true>>({});
   const timerRef = useRef<number | null>(null);
   const savedTimerRef = useRef<number | null>(null);
   /** `scheduleLeaveHostedApp`이 연쇄 popstate를 일으킬 때 재진입 방지 */
@@ -201,6 +208,16 @@ export default function Home() {
     /* 메인 진입 시 빈 세션 정리 후 카운트가 paint 직전에 동기 반영되어야 한다 — 의도된 useLayoutEffect 동기 setState */
     setSessionKeys(listSessionStorageKeys());
   }, [isScanMode, adminView]);
+
+  useEffect(() => {
+    /* 화면이 바뀌거나 스캔 모드로 들어가면 list의 다중 선택 모드는 자동
+       해제한다 — 선택 상태가 다른 화면을 오가며 살아 있으면 사용자가
+       돌아왔을 때 의도와 어긋난다. */
+    if (adminView !== "list" || isScanMode) {
+      setSelectionMode(false);
+      setSelectedKeys({});
+    }
+  }, [adminView, isScanMode]);
 
   useEffect(() => {
     return () => {
@@ -282,11 +299,11 @@ export default function Home() {
     if (!selectedKey) return;
     if (
       !window.confirm(
-        "이 점검 기록을 지울까요?\n지우면 이 기기에서 다시 살릴 수 없어요."
+        "이 점검 기록을 휴지통으로 보낼까요?\n휴지통에서 다시 복구하거나 영구 삭제할 수 있어요."
       )
     )
       return;
-    deleteSessionKey(selectedKey);
+    softDeleteSession(selectedKey);
     setSelectedKey(null);
     setSelectedText("");
     refreshList();
@@ -295,6 +312,22 @@ export default function Home() {
        이 호출이 없으면 뒤로가기 시 popstate가 selectedKey=null 상태의 detail로
        돌아가서 빈 화면이 표시된다. */
     window.history.back();
+  };
+
+  const onRestoreFromTrash = (key: string) => {
+    restoreSession(key);
+    refreshList();
+  };
+
+  const onPermanentDeleteFromTrash = (key: string) => {
+    if (
+      !window.confirm(
+        "이 점검 기록을 영구 삭제할까요?\n영구 삭제하면 이 기기에서 다시 살릴 수 없어요."
+      )
+    )
+      return;
+    deleteSessionKey(key);
+    refreshList();
   };
 
   const onCopy = async () => {
@@ -320,11 +353,23 @@ export default function Home() {
     () => countSessionLines(selectedText),
     [selectedText]
   );
-  const totalRecords = sessionKeys.length;
   const canCopyDetail = useMemo(
     () => toPlainSessionText(selectedText).length > 0,
     [selectedText]
   );
+  /** 활성(휴지통 아님) 세션 키 — 지난 점검 기록 목록과 홈 뱃지 카운트에 사용. */
+  const activeKeys = useMemo(
+    () => sessionKeys.filter((k) => !isSessionInTrash(k)),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+    [sessionKeys, sessionsRevision]
+  );
+  /** 휴지통(소프트 삭제) 세션 키. */
+  const trashedKeys = useMemo(
+    () => sessionKeys.filter((k) => isSessionInTrash(k)),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+    [sessionKeys, sessionsRevision]
+  );
+  const totalRecords = activeKeys.length;
   /** 리스트 화면 렌더마다 모든 항목에 대해 localStorage.getItem을 다시 부르지 않도록 한 번에 계산해 캐시. */
   const sessionLineCounts = useMemo(() => {
     const out: Record<string, number> = {};
@@ -349,6 +394,31 @@ export default function Home() {
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
     [selectedKey, sessionsRevision]
   );
+  const selectedCountForMulti = Object.keys(selectedKeys).length;
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedKeys({});
+  }, []);
+
+  const toggleKeySelection = useCallback((key: string) => {
+    setSelectedKeys((prev) => {
+      const next = { ...prev };
+      if (next[key]) delete next[key];
+      else next[key] = true;
+      return next;
+    });
+  }, []);
+
+  const moveSelectedToTrash = useCallback(() => {
+    const keys = Object.keys(selectedKeys);
+    if (keys.length === 0) return;
+    for (const key of keys) softDeleteSession(key);
+    /* 본문은 보존하면서 활성 목록에서만 제거 — 사용자가 휴지통에서 복구
+       가능. 선택 모드 해제 + 목록 재계산. */
+    setSessionKeys(listSessionStorageKeys());
+    exitSelectionMode();
+  }, [selectedKeys, softDeleteSession, exitSelectionMode]);
 
   if (isScanMode) {
     return (
@@ -498,26 +568,50 @@ export default function Home() {
         {adminView === "list" && (
           <section className="flex min-h-0 flex-1 flex-col">
             <header className="flex items-center gap-1 pb-3">
-              <button
-                type="button"
-                onClick={() => window.history.back()}
-                aria-label="뒤로 가기"
-                className="press flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-bg-subtle"
-              >
-                <ChevronLeftIcon className="h-6 w-6 text-text-primary" />
-              </button>
+              {selectionMode ? (
+                <button
+                  type="button"
+                  onClick={exitSelectionMode}
+                  aria-label="선택 모드 끝내기"
+                  className="press flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 text-[14px] font-semibold text-text-primary hover:bg-bg-subtle"
+                >
+                  취소
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => window.history.back()}
+                  aria-label="뒤로 가기"
+                  className="press flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-bg-subtle"
+                >
+                  <ChevronLeftIcon className="h-6 w-6 text-text-primary" />
+                </button>
+              )}
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-[18px] font-bold text-text-primary">
-                  지난 점검 기록
+                  {selectionMode
+                    ? `${selectedCountForMulti}개 선택됨`
+                    : "지난 점검 기록"}
                 </h2>
-                <p className="text-[12px] text-text-tertiary">
-                  눌러서 내용을 보거나 복사해요
-                </p>
+                {!selectionMode && (
+                  <p className="text-[12px] text-text-tertiary">
+                    눌러서 내용을 보거나 복사해요
+                  </p>
+                )}
               </div>
+              {!selectionMode && activeKeys.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectionMode(true)}
+                  className="press flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 text-[14px] font-semibold text-text-primary active:bg-bg-subtle"
+                >
+                  선택
+                </button>
+              )}
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {sessionKeys.length === 0 ? (
+              {activeKeys.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
                   <div
                     aria-hidden
@@ -545,36 +639,71 @@ export default function Home() {
                 </div>
               ) : (
                 <ul className="flex flex-col gap-2 pb-2">
-                  {sessionKeys.map((key) => {
+                  {activeKeys.map((key) => {
                     const count = sessionLineCounts[key] ?? 0;
                     /* 권수가 0인 세션은 메인 정리에서 곧 사라지므로 뱃지를
                        달지 않는다(잠깐 사이 깜빡임 방지). */
                     const showBackupBadge = count > 0;
                     const backedUp = sessionBackedUpStatus[key] ?? false;
+                    const selected = !!selectedKeys[key];
                     return (
                       <li key={key}>
                         <button
                           type="button"
-                          onClick={() => openDetail(key)}
-                          className="press flex w-full items-center gap-3 rounded-2xl bg-bg-subtle px-4 py-3.5 text-left active:bg-bg-input"
+                          onClick={() =>
+                            selectionMode
+                              ? toggleKeySelection(key)
+                              : openDetail(key)
+                          }
+                          aria-pressed={selectionMode ? selected : undefined}
+                          className={`press flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left ${
+                            selectionMode && selected
+                              ? "bg-brand-subtle"
+                              : "bg-bg-subtle active:bg-bg-input"
+                          }`}
                         >
-                          <div
-                            aria-hidden
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-subtle"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="h-5 w-5 text-brand"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={2}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                          {selectionMode ? (
+                            <span
+                              aria-hidden
+                              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                                selected
+                                  ? "border-brand bg-brand text-text-on-brand"
+                                  : "border-border-strong bg-bg-card"
+                              }`}
                             >
-                              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                            </svg>
-                          </div>
+                              {selected && (
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  className="h-3.5 w-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={3.5}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M5 12l5 5L20 7" />
+                                </svg>
+                              )}
+                            </span>
+                          ) : (
+                            <div
+                              aria-hidden
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-subtle"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="h-5 w-5 text-brand"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                              </svg>
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-[14px] font-semibold text-text-primary">
                               {formatSessionLabel(key)}
@@ -610,8 +739,173 @@ export default function Home() {
                               )}
                             </p>
                           </div>
-                          <ChevronRightIcon className="h-5 w-5 shrink-0 text-text-tertiary" />
+                          {!selectionMode && (
+                            <ChevronRightIcon className="h-5 w-5 shrink-0 text-text-tertiary" />
+                          )}
                         </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            {selectionMode ? (
+              <div className="shrink-0 pt-2">
+                <button
+                  type="button"
+                  onClick={moveSelectedToTrash}
+                  disabled={selectedCountForMulti === 0}
+                  className="press flex min-h-[52px] w-full items-center justify-center rounded-xl bg-brand px-4 text-[15px] font-semibold text-text-on-brand disabled:cursor-not-allowed disabled:opacity-50 hover:bg-brand-hover"
+                >
+                  {selectedCountForMulti === 0
+                    ? "삭제할 항목을 선택해주세요"
+                    : `선택한 ${selectedCountForMulti}개 휴지통으로 보내기`}
+                </button>
+              </div>
+            ) : (
+              trashedKeys.length > 0 && (
+                <div className="shrink-0 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminView("trash");
+                      pushScreenHistory("trash");
+                    }}
+                    className="press flex min-h-11 w-full items-center justify-between gap-2 rounded-xl bg-bg-subtle px-4 text-[13px] font-semibold text-text-secondary active:bg-bg-input"
+                    aria-label={`휴지통 ${trashedKeys.length}개 보기`}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                      </svg>
+                      <span>휴지통</span>
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-bg-input px-1.5 text-[11px] font-bold tabular-nums text-text-tertiary">
+                        {trashedKeys.length}
+                      </span>
+                    </span>
+                    <ChevronRightIcon className="h-4 w-4 text-text-tertiary" />
+                  </button>
+                </div>
+              )
+            )}
+          </section>
+        )}
+
+        {adminView === "trash" && (
+          <section className="flex min-h-0 flex-1 flex-col">
+            <header className="flex items-center gap-1 pb-3">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                aria-label="뒤로 가기"
+                className="press flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-bg-subtle"
+              >
+                <ChevronLeftIcon className="h-6 w-6 text-text-primary" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-[18px] font-bold text-text-primary">
+                  휴지통
+                </h2>
+                <p className="text-[12px] text-text-tertiary">
+                  복구하거나 영구 삭제할 수 있어요
+                </p>
+              </div>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {trashedKeys.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+                  <div
+                    aria-hidden
+                    className="flex h-16 w-16 items-center justify-center rounded-full bg-bg-input"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-8 w-8 text-text-tertiary"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    </svg>
+                  </div>
+                  <p className="text-[15px] font-semibold text-text-primary">
+                    휴지통이 비어 있어요
+                  </p>
+                  <p className="max-w-xs text-[13px] leading-relaxed text-text-secondary">
+                    삭제한 점검 기록이 여기에 보관되고, 한 번 더 눌러야
+                    영구 삭제돼요.
+                  </p>
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-2 pb-2">
+                  {trashedKeys.map((key) => {
+                    const count = sessionLineCounts[key] ?? 0;
+                    return (
+                      <li
+                        key={key}
+                        className="flex flex-col gap-2.5 rounded-2xl bg-bg-subtle px-4 py-3.5"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            aria-hidden
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bg-input"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-5 w-5 text-text-tertiary"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            </svg>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[14px] font-semibold text-text-primary">
+                              {formatSessionLabel(key)}
+                            </p>
+                            <p className="text-[12px] tabular-nums text-text-tertiary">
+                              {count}권 점검
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onRestoreFromTrash(key)}
+                            className="press flex min-h-11 flex-1 items-center justify-center rounded-xl bg-bg-input px-3 text-[13px] font-semibold text-text-primary active:bg-border-default"
+                          >
+                            복구
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onPermanentDeleteFromTrash(key)}
+                            className="press flex min-h-11 flex-1 items-center justify-center rounded-xl bg-danger-bg px-3 text-[13px] font-semibold text-danger hover:bg-danger-bg/80"
+                          >
+                            영구 삭제
+                          </button>
+                        </div>
                       </li>
                     );
                   })}
