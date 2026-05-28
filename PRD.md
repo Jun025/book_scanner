@@ -50,7 +50,7 @@
   트리거는 제거됨.)
 
 ### ③ 세션별 localStorage (Offline-First)
-- **본문 키 규칙:** `book-scanner:session:` + **점검 시작 시각의 ISO8601 문자열** (예: `book-scanner:session:2026-04-07T12:34:56.789Z`). 한 세션의 모든 스캔은 **동일 키**의 **단일 문자열 값**에 `\n`으로 누적.
+- **본문 키 규칙:** `book-scanner:session:` + **점검 시작 시각의 ISO8601 문자열** (예: `book-scanner:session:2026-04-07T12:34:56.789Z`). 한 세션의 모든 스캔은 **동일 키**의 **단일 문자열 값**에 `\n`으로 누적. **시계 점프 충돌 방어(2026-05-29 추가)**: 동일 ISO가 이미 본문 키로 존재하면 `-2`, `-3`, ... suffix를 붙여 새 고유 키를 발급한다(휴지통 세션 포함). 기존 본문은 절대 덮어쓰지 않으며, 충돌이 없는 일반 경로에서는 종전과 동일한 키 형식을 그대로 유지(=마이그레이션 불필요).
 - **즉시 저장:** `appendDigitScanToActiveSession`이 매 성공 시 `localStorage` 기존 값을 읽고 **줄 append 후 `setItem`**. 이탈·종료와 무관하게 **스캔 즉시 반영**.
 - **세션 메타(2026-05-28 도입, 2026-05-29 휴지통 확장):** 본문과 분리된 네임스페이스 `book-scanner:meta:` + 본문과 동일한 ISO suffix에 JSON `{ backedUpAt: number, deletedAt: number }`로 보관(`src/store/sessionMeta.ts`). 본문 파싱·세션 정리 로직과 완전 분리. 표준 store API: **`markSessionBackedUp(key)`**(복사 성공 시), **`softDeleteSession(key)`**(휴지통으로), **`restoreSession(key)`**(복구). 영구 삭제는 기존 `deleteSessionKey(key)`(본문+메타 동시 제거). 모든 액션은 메타를 `mergeSessionMetaRaw`로 부분 갱신해 다른 필드를 덮어쓰지 않으며, 자동으로 revision을 bump해 목록·휴지통 UI가 즉시 갱신된다. 메인 진입의 빈 세션 정리(`removeSessionKeysWithZeroBarcodes`)는 휴지통 세션을 건드리지 않는다. **meta 부재 = "신규(미복사) + 활성(휴지통 아님)"으로 해석**(마이그레이션 fail-safe). 목록 뱃지: 활성 세션 중 권수>0에 한해 **"복사한 적 있음"**(목련 그린, 완료) 또는 **"신규"**(연꽃 로즈, 강조).
 - **Zustand 역할:** 실행 중 UI 메타(`activeSessionKey`, `liveSessionText`, `lastCapturedCode` 등)만 관리. 스캔 화면 노출은 페이지의 **`isScanMode`** 등으로 구분. **스캔 본문은 `persist` 미사용** — 원본은 항상 해당 세션 키의 `localStorage` 값.

@@ -28,7 +28,13 @@ import {
 } from "@/store/useScannerStore";
 
 function formatSessionLabel(key: string): string {
-  const iso = key.slice("book-scanner:session:".length);
+  let iso = key.slice("book-scanner:session:".length);
+  /* 시계 점프 충돌 방어로 base에 붙은 `-N` 또는 `-<ms>-<rand>` suffix는
+     라벨 파싱 단계에서 제거한다 — 사용자에겐 base 시각만 노출(헌법: 화면이
+     단순해야 함). 두 세션이 같은 시각으로 보일 수는 있지만 키는 분리되어
+     본문 안전. */
+  const suffixIdx = iso.indexOf("Z-");
+  if (suffixIdx !== -1) iso = iso.slice(0, suffixIdx + 1);
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return key;
 
