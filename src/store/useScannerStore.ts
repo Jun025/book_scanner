@@ -1,5 +1,10 @@
 import { create } from "zustand";
 import { countSessionLines } from "@/lib/sessionText";
+import {
+  deleteSessionMetaRaw,
+  removeOrphanMetaKeys,
+  writeSessionMetaRaw,
+} from "@/store/sessionMeta";
 
 const DIGIT_ONLY = /^\d+$/;
 /** 동일 바코드만 2초간 재입력 차단 (다른 바코드는 즉시 허용) */
@@ -24,6 +29,12 @@ type ScannerState = {
   setLiveSessionText: (text: string) => void;
   appendDigitScanToActiveSession: (raw: string) => boolean;
   bumpSessionsRevision: () => void;
+  /**
+   * 세션을 "한 번이라도 복사·공유됨"으로 표시. 진행/상세 복사, 전체
+   * 내보내기에서 실제 성공한 직후 호출. localStorage 메타 write + revision
+   * 자동 bump로 목록 뱃지가 즉시 갱신된다.
+   */
+  markSessionBackedUp: (sessionKey: string) => void;
 };
 
 function normalizeDigits(raw: string): string | null {
@@ -72,6 +83,8 @@ function hasAnyNonEmptyLine(text: string): boolean {
 export function deleteSessionKey(key: string): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(key);
+  /* 본문이 사라지면 짝이 되는 메타도 함께 제거해 orphan을 만들지 않는다. */
+  deleteSessionMetaRaw(key);
 }
 
 /** 비어 있는(바코드 줄 0건) 세션 키를 localStorage에서 제거. 메인 표시 직전에 호출. */
@@ -87,6 +100,10 @@ export function removeSessionKeysWithZeroBarcodes(): void {
     anyRemoved = true;
     if (key === activeSessionKey) removedActive = true;
   }
+  /* 본문 정리 후 살아남은 본문 키와 짝이 없는 meta(orphan)도 같이 정리.
+     보통 deleteSessionKey가 짝지어 지우므로 비어 있지만, 멀티 탭·미래
+     버그·과거 마이그레이션 등을 대비한 안전망. */
+  removeOrphanMetaKeys(listSessionStorageKeys());
   if (removedActive) {
     useScannerStore.setState({
       activeSessionKey: null,
@@ -173,5 +190,13 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
       lastCaptureAt: now,
     });
     return true;
+  },
+
+  markSessionBackedUp: (sessionKey) => {
+    if (!sessionKey) return;
+    const ok = writeSessionMetaRaw(sessionKey, { backedUpAt: Date.now() });
+    /* private mode 등으로 meta write가 실패해도 본문은 안전하므로 조용히
+       지나간다. 성공한 경우에만 revision을 올려 목록 뱃지를 갱신. */
+    if (ok) get().bumpSessionsRevision();
   },
 }));
