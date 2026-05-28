@@ -25,7 +25,18 @@ function getOnlineServerSnapshot(): boolean {
   return true;
 }
 
-export default function OnlineStatusBanner() {
+type Props = {
+  /**
+   * 이 배너가 화면 최상단에 위치할 때(=위에 AppHeader 같은 safe-area 처리
+   * 요소가 없을 때) true로 둔다. iOS 노치 영역을 배너가 직접 처리하도록
+   * pt를 safe-area-inset-top로 확장한다. 홈 화면처럼 헤더 아래에 둘 때는
+   * false(기본값)를 유지해 헤더가 이미 처리한 safe-area를 중복 적용하지
+   * 않는다.
+   */
+  topmost?: boolean;
+};
+
+export default function OnlineStatusBanner({ topmost = false }: Props) {
   const online = useSyncExternalStore(
     subscribeOnline,
     getOnlineSnapshot,
@@ -38,7 +49,9 @@ export default function OnlineStatusBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="flex items-center justify-center gap-2 border-b border-border-default bg-warning-bg px-3 py-2 text-[13px] font-medium text-text-primary"
+      className={`flex items-center justify-center gap-2 border-b border-border-default bg-warning-bg px-3 pb-2 text-[13px] font-medium text-text-primary ${
+        topmost ? "pt-[max(0.5rem,env(safe-area-inset-top))]" : "pt-2"
+      }`}
     >
       <span
         aria-hidden

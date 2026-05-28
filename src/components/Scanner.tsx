@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import ClipboardIcon from "@/components/ClipboardIcon";
+import OnlineStatusBanner from "@/components/OnlineStatusBanner";
 import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
 import { countSessionLines, toPlainSessionText } from "@/lib/sessionText";
 import { useScannerStore } from "@/store/useScannerStore";
@@ -607,6 +608,10 @@ export default function Scanner({ onExitSession }: ScannerProps) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {inSession && (
           <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
+            {/* 오프라인 안내 띠 — 점검 진행 중에도 노출되어야 가장 의미 있음.
+                topmost로 두어 노치 safe-area를 배너가 직접 흡수한다. 본 앱은
+                오프라인에서도 정상 동작하므로 경고가 아닌 안심 톤 문구. */}
+            <OnlineStatusBanner topmost />
             {/* 진행 요약 — 뒤로가기 + 총 권수 · 방금 인식 */}
             <div
               className="shrink-0 border-b border-border-default bg-bg-base px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]"

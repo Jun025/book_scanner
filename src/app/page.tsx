@@ -435,6 +435,9 @@ export default function Home() {
           <OnlineStatusBanner />
         </>
       )}
+      {/* 비홈 화면(지난 점검 목록·상세)에서도 오프라인이면 띠를 노출 — 헤더가
+          없는 화면이라 topmost로 노치 safe-area를 배너가 직접 처리한다. */}
+      {adminView !== "main" && <OnlineStatusBanner topmost />}
 
       <div
         className={`mx-auto flex min-h-0 w-full max-w-[var(--container-max)] flex-1 flex-col px-5 pb-6 ${
