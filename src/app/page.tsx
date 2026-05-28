@@ -330,6 +330,35 @@ export default function Home() {
     refreshList();
   };
 
+  /** 휴지통에서 detail 미리보기로 진입했을 때의 [복구] 핸들러.
+      복구 후에는 detail 컨텍스트(=휴지통 항목)가 사라지므로 자연스럽게
+      이전 화면(휴지통)으로 되돌아간다. */
+  const onRestoreFromDetail = () => {
+    if (!selectedKey) return;
+    restoreSession(selectedKey);
+    setSelectedKey(null);
+    setSelectedText("");
+    refreshList();
+    setAdminView("trash");
+    window.history.back();
+  };
+
+  const onPermanentDeleteFromDetail = () => {
+    if (!selectedKey) return;
+    if (
+      !window.confirm(
+        "이 점검 기록을 영구 삭제할까요?\n영구 삭제하면 이 기기에서 다시 살릴 수 없어요."
+      )
+    )
+      return;
+    deleteSessionKey(selectedKey);
+    setSelectedKey(null);
+    setSelectedText("");
+    refreshList();
+    setAdminView("trash");
+    window.history.back();
+  };
+
   const onCopy = async () => {
     const plain = toPlainSessionText(selectedText);
     if (!plain) return;
@@ -391,6 +420,12 @@ export default function Home() {
   /** 상세 화면의 종료 직후 배너 조건: 이미 백업된 세션이면 안내가 의미 없으므로 노출 안 함. */
   const selectedBackedUp = useMemo(
     () => (selectedKey ? isSessionBackedUp(selectedKey) : false),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+    [selectedKey, sessionsRevision]
+  );
+  /** 휴지통에서 진입한 detail인지 — 본문 편집 차단·액션 버튼 분기에 사용. */
+  const selectedIsTrashed = useMemo(
+    () => (selectedKey ? isSessionInTrash(selectedKey) : false),
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
     [selectedKey, sessionsRevision]
   );
@@ -860,9 +895,14 @@ export default function Home() {
                     return (
                       <li
                         key={key}
-                        className="flex flex-col gap-2.5 rounded-2xl bg-bg-subtle px-4 py-3.5"
+                        className="overflow-hidden rounded-2xl bg-bg-subtle"
                       >
-                        <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openDetail(key)}
+                          aria-label={`${formatSessionLabel(key)} 미리보기`}
+                          className="press flex w-full items-center gap-3 px-4 pb-2 pt-3.5 text-left active:bg-bg-input"
+                        >
                           <div
                             aria-hidden
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bg-input"
@@ -886,11 +926,12 @@ export default function Home() {
                               {formatSessionLabel(key)}
                             </p>
                             <p className="text-[12px] tabular-nums text-text-tertiary">
-                              {count}권 점검
+                              {count}권 점검 · 눌러서 내용 보기
                             </p>
                           </div>
-                        </div>
-                        <div className="flex gap-2">
+                          <ChevronRightIcon className="h-5 w-5 shrink-0 text-text-tertiary" />
+                        </button>
+                        <div className="flex gap-2 px-4 pb-3.5 pt-1">
                           <button
                             type="button"
                             onClick={() => onRestoreFromTrash(key)}
@@ -936,16 +977,48 @@ export default function Home() {
               </div>
             </header>
 
-            {justFinishedSession && selectedCount > 0 && !selectedBackedUp && (
+            {selectedIsTrashed ? (
               <div
                 role="status"
-                className="mb-3 rounded-xl bg-brand-subtle px-4 py-3 text-[13px] leading-relaxed text-brand-text"
+                className="mb-3 flex items-start gap-2 rounded-xl bg-bg-subtle px-4 py-3 text-[13px] leading-relaxed text-text-secondary"
               >
-                방금 점검한{" "}
-                <span className="font-bold tabular-nums">{selectedCount}권</span>
-                이 저장됐어요. 사서 선생님께 전달하려면 아래{" "}
-                <span className="font-bold">복사 버튼</span>을 눌러주세요.
+                <svg
+                  viewBox="0 0 24 24"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                </svg>
+                <span>
+                  <span className="font-semibold text-text-primary">
+                    휴지통에 있는 기록이에요.
+                  </span>{" "}
+                  복구하면 다시 편집할 수 있고, 영구 삭제하면 되돌릴 수 없어요.
+                </span>
               </div>
+            ) : (
+              justFinishedSession &&
+              selectedCount > 0 &&
+              !selectedBackedUp && (
+                <div
+                  role="status"
+                  className="mb-3 rounded-xl bg-brand-subtle px-4 py-3 text-[13px] leading-relaxed text-brand-text"
+                >
+                  방금 점검한{" "}
+                  <span className="font-bold tabular-nums">
+                    {selectedCount}권
+                  </span>
+                  이 저장됐어요. 사서 선생님께 전달하려면 아래{" "}
+                  <span className="font-bold">복사 버튼</span>을 눌러주세요.
+                </div>
+              )
             )}
 
             <div className="flex flex-col gap-2.5 pb-3">
@@ -972,38 +1045,73 @@ export default function Home() {
                 )}
                 {copyDone ? "복사했어요" : "클립보드에 복사하기"}
               </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                className="press min-h-[52px] rounded-xl bg-bg-subtle px-5 text-[14px] font-semibold text-danger hover:bg-danger-bg"
-              >
-                이 점검 기록 지우기
-              </button>
+              {selectedIsTrashed ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onRestoreFromDetail}
+                    className="press flex min-h-[52px] flex-1 items-center justify-center rounded-xl bg-bg-input px-5 text-[14px] font-semibold text-text-primary active:bg-border-default"
+                  >
+                    복구
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onPermanentDeleteFromDetail}
+                    className="press flex min-h-[52px] flex-1 items-center justify-center rounded-xl bg-danger-bg px-5 text-[14px] font-semibold text-danger hover:bg-danger-bg/80"
+                  >
+                    영구 삭제
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="press min-h-[52px] rounded-xl bg-bg-subtle px-5 text-[14px] font-semibold text-danger hover:bg-danger-bg"
+                >
+                  이 점검 기록 지우기
+                </button>
+              )}
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-[12px] leading-relaxed text-text-tertiary">
-                  한 줄에 번호 하나씩 적으면 복사할 때 깔끔해요.
+                  {selectedIsTrashed
+                    ? "휴지통에 있는 기록이라 편집할 수 없어요. 복구하면 다시 편집할 수 있어요."
+                    : "한 줄에 번호 하나씩 적으면 복사할 때 깔끔해요."}
                 </p>
                 <span
                   role="status"
                   aria-live="polite"
                   className={`shrink-0 text-[12px] font-medium text-accent-text transition-opacity duration-200 ${
-                    savedAt > 0 ? "opacity-100" : "opacity-0"
+                    !selectedIsTrashed && savedAt > 0
+                      ? "opacity-100"
+                      : "opacity-0"
                   }`}
                 >
-                  {savedAt > 0 ? "저장됨" : ""}
+                  {!selectedIsTrashed && savedAt > 0 ? "저장됨" : ""}
                 </span>
               </div>
               <textarea
                 value={selectedText}
-                onChange={(e) => onChangeDetail(e.target.value)}
-                aria-label="점검 기록 편집"
+                onChange={
+                  selectedIsTrashed
+                    ? undefined
+                    : (e) => onChangeDetail(e.target.value)
+                }
+                readOnly={selectedIsTrashed}
+                aria-readonly={selectedIsTrashed ? "true" : undefined}
+                aria-label={
+                  selectedIsTrashed ? "휴지통 기록 보기" : "점검 기록 편집"
+                }
                 spellCheck={false}
                 autoCorrect="off"
                 autoComplete="off"
-                className="h-full min-h-[40dvh] w-full resize-none rounded-xl border border-border-default bg-bg-input px-3.5 py-3 font-mono text-[15px] leading-relaxed tabular-nums text-text-primary outline-none focus:border-brand"
+                className={`h-full min-h-[40dvh] w-full resize-none rounded-xl border px-3.5 py-3 font-mono text-[15px] leading-relaxed tabular-nums text-text-primary outline-none ${
+                  selectedIsTrashed
+                    ? "cursor-default border-border-default bg-bg-subtle"
+                    : "border-border-default bg-bg-input focus:border-brand"
+                }`}
               />
             </div>
           </section>
