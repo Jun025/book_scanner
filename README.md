@@ -89,6 +89,14 @@ Cloudflare Pages에서 이 저장소를 연결한 뒤, Build 설정을 아래처
 
 OpenNext 빌드 결과(`.open-next/worker.js`)가 서버 렌더링/라우트 처리를 담당하고, 정적 파일은 `.open-next/assets`에서 서빙됩니다.
 
+> ⚠️ **빌드 명령은 반드시 `pnpm build` 스크립트를 경유해야 합니다.**
+> `@ducanh2912/next-pwa`는 webpack 전용 플러그인이라 Next.js 16의 기본 번들러(Turbopack)에서는 동작하지 않습니다.
+> `pnpm build` 스크립트는 `next build --webpack`을 호출해 PWA(서비스 워커·workbox 파일)를 생성하지만,
+> `next build`를 직접 호출하면 PWA가 누락된 채로 빌드가 끝납니다.
+> 위 권장 명령 `pnpm opennextjs-cloudflare build`는 내부적으로 `pnpm build`를 실행하므로 안전합니다.
+> 만약 `open-next.config.ts`에서 `buildCommand`를 직접 지정하게 된다면 반드시 `pnpm build`(또는 `next build --webpack`)로 지정하세요.
+> 프로덕션 환경에서 `--webpack` 없이 빌드가 시작되면 `next.config.ts`의 가드가 즉시 빌드를 실패시킵니다.
+
 ### 3) 필요한 설정 파일
 
 프로젝트 루트에 `wrangler.jsonc`가 없다면 생성합니다.
