@@ -128,6 +128,7 @@ export default function Scanner({ onExitSession }: ScannerProps) {
   );
   const lastCapturedCode = useScannerStore((s) => s.lastCapturedCode);
   const lastCaptureAt = useScannerStore((s) => s.lastCaptureAt);
+  const markSessionBackedUp = useScannerStore((s) => s.markSessionBackedUp);
 
   const sessionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -572,6 +573,10 @@ export default function Scanner({ onExitSession }: ScannerProps) {
     if (!plain) return;
     try {
       await navigator.clipboard.writeText(plain);
+      /* 복사 성공 → 이 세션은 "한 번이라도 백업됨"으로 기록.
+         지난 점검 목록에서 "보냄" 뱃지로 표시되고, 종료 후 자동 진입
+         배너도 더 이상 뜨지 않는다(이미 사용자가 챙겼다는 신호). */
+      if (activeSessionKey) markSessionBackedUp(activeSessionKey);
       showToast(`기록 ${totalBooks}권을 복사했어요`, "success", 1500);
     } catch {
       showToast(
@@ -580,7 +585,13 @@ export default function Scanner({ onExitSession }: ScannerProps) {
         1800
       );
     }
-  }, [liveSessionText, totalBooks, showToast]);
+  }, [
+    activeSessionKey,
+    liveSessionText,
+    markSessionBackedUp,
+    showToast,
+    totalBooks,
+  ]);
 
   return (
     <div className="isolate flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-bg-base text-text-primary">

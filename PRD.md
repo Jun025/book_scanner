@@ -50,8 +50,9 @@
   트리거는 제거됨.)
 
 ### ③ 세션별 localStorage (Offline-First)
-- **키 규칙:** `book-scanner:session:` + **점검 시작 시각의 ISO8601 문자열** (예: `book-scanner:session:2026-04-07T12:34:56.789Z`). 한 세션의 모든 스캔은 **동일 키**의 **단일 문자열 값**에 `\n`으로 누적.
+- **본문 키 규칙:** `book-scanner:session:` + **점검 시작 시각의 ISO8601 문자열** (예: `book-scanner:session:2026-04-07T12:34:56.789Z`). 한 세션의 모든 스캔은 **동일 키**의 **단일 문자열 값**에 `\n`으로 누적.
 - **즉시 저장:** `appendDigitScanToActiveSession`이 매 성공 시 `localStorage` 기존 값을 읽고 **줄 append 후 `setItem`**. 이탈·종료와 무관하게 **스캔 즉시 반영**.
+- **백업 여부 메타(2026-05-28 추가):** 본문과 분리된 네임스페이스 `book-scanner:meta:` + 본문과 동일한 ISO suffix에 JSON `{ backedUpAt: number }`로 보관(`src/store/sessionMeta.ts`). 본문 파싱·세션 정리 로직과 완전 분리. `useScannerStore.markSessionBackedUp(key)`이 표준 API이며 1·2·3차 안전망의 실제 성공 시(공유 취소·실패 제외)에만 호출되고 자동으로 revision을 bump해 목록 뱃지가 즉시 갱신된다. 본문 삭제 시 짝이 되는 meta도 같이 삭제하고, 메인 진입의 빈 세션 정리 시 orphan meta sweep을 1회 동반한다. **meta 부재 = "아직 안 보냄"으로 해석**(부재=미백업, 마이그레이션 fail-safe).
 - **Zustand 역할:** 실행 중 UI 메타(`activeSessionKey`, `liveSessionText`, `lastCapturedCode` 등)만 관리. 스캔 화면 노출은 페이지의 **`isScanMode`** 등으로 구분. **스캔 본문은 `persist` 미사용** — 원본은 항상 해당 세션 키의 `localStorage` 값.
 - **점검 중 표시:** 하단은 보기 모드(`readOnly`)·**직접 수정** 모드(`setLiveSessionText`로 즉시 `localStorage` 반영, `_lastAccepted` 초기화). **지난 점검 상세**도 `writeSessionRaw`·textarea. **점검 진행 화면에도 "복사" 버튼**을 라벨 행에 두어 권수>0일 때 현재까지 기록을 클립보드에 복사 가능(2026-05-28 추가, 데이터 유실 방지 1차 안전망).
 

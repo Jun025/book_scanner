@@ -23,6 +23,7 @@ import {
   countSessionLines,
   toPlainSessionText,
 } from "@/lib/sessionText";
+import { isSessionBackedUp } from "@/store/sessionMeta";
 import {
   deleteSessionKey,
   listSessionStorageKeys,
@@ -153,6 +154,10 @@ const CheckIcon = ({ className }: { className?: string }) => (
 export default function Home() {
   const activeSessionKey = useScannerStore((s) => s.activeSessionKey);
   const beginInventorySession = useScannerStore((s) => s.beginInventorySession);
+  const markSessionBackedUp = useScannerStore((s) => s.markSessionBackedUp);
+  /** 메타(백업 여부)는 store에 직접 들어 있지 않으므로, store의 revision을
+      구독해 mark가 일어날 때마다 메타 기반 useMemo가 다시 계산되도록 한다. */
+  const sessionsRevision = useScannerStore((s) => s.sessionsRevision);
 
   const [isScanMode, setIsScanMode] = useState(false);
   const [adminView, setAdminView] = useState<"main" | "list" | "detail">(
@@ -204,7 +209,6 @@ export default function Home() {
     if (isScanMode || adminView !== "main") return;
     removeSessionKeysWithZeroBarcodes();
     /* 메인 진입 시 빈 세션 정리 후 카운트가 paint 직전에 동기 반영되어야 한다 — 의도된 useLayoutEffect 동기 setState */
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSessionKeys(listSessionStorageKeys());
   }, [isScanMode, adminView]);
 
@@ -311,6 +315,17 @@ export default function Home() {
     const filename = buildExportFilename();
     const result = await shareOrCopyOrDownload(text, filename);
     if (result === "cancelled") return;
+    /* shared(공유 시트 완료) / copied(클립보드 성공) / downloaded(파일 저장)
+       세 경로는 내용이 앱 밖으로 빠져나간 상태로 보고 모두 백업됨 처리한다.
+       cancelled(사용자 취소)·empty·failed는 마크하지 않는다. buildAllSessionsText가
+       권수>0 세션만 포함하므로, 같은 조건으로 마크 대상도 필터한다. */
+    if (result === "shared" || result === "copied" || result === "downloaded") {
+      for (const key of sessionKeys) {
+        if (countSessionLines(readSessionRaw(key)) > 0) {
+          markSessionBackedUp(key);
+        }
+      }
+    }
     setExportResult(result);
     if (exportTimerRef.current !== null)
       window.clearTimeout(exportTimerRef.current);
@@ -329,6 +344,9 @@ export default function Home() {
       /* B-2 배너는 "복사하세요"가 목적이었으므로 복사가 끝나면 임무 완수.
          자동으로 사라져 화면을 깔끔하게 한다. */
       setJustFinishedSession(false);
+      /* 이 세션을 "한 번이라도 백업됨"으로 표시 → 목록 뱃지가 즉시 갱신
+         되고, 이후 같은 세션을 다시 열어도 종료 직후 배너가 뜨지 않는다. */
+      if (selectedKey) markSessionBackedUp(selectedKey);
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => setCopyDone(false), 1800);
     } catch {
@@ -353,6 +371,22 @@ export default function Home() {
     }
     return out;
   }, [sessionKeys]);
+  /** 같은 이유로 백업 여부도 한 번에 계산. revision이 올라가면 다시 계산. */
+  const sessionBackedUpStatus = useMemo(() => {
+    const out: Record<string, boolean> = {};
+    for (const key of sessionKeys) {
+      out[key] = isSessionBackedUp(key);
+    }
+    return out;
+    /* sessionsRevision 의존성은 mark 호출 직후 뱃지가 즉시 갱신되도록 함 */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKeys, sessionsRevision]);
+  /** 상세 화면의 종료 직후 배너 조건: 이미 백업된 세션이면 안내가 의미 없으므로 노출 안 함. */
+  const selectedBackedUp = useMemo(
+    () => (selectedKey ? isSessionBackedUp(selectedKey) : false),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+    [selectedKey, sessionsRevision]
+  );
 
   if (isScanMode) {
     return (
@@ -588,6 +622,10 @@ export default function Home() {
                 <ul className="flex flex-col gap-2 pb-2">
                   {sessionKeys.map((key) => {
                     const count = sessionLineCounts[key] ?? 0;
+                    /* 권수가 0인 세션은 메인 정리에서 곧 사라지므로 뱃지를
+                       달지 않는다(잠깐 사이 깜빡임 방지). */
+                    const showBackupBadge = count > 0;
+                    const backedUp = sessionBackedUpStatus[key] ?? false;
                     return (
                       <li key={key}>
                         <button
@@ -616,8 +654,35 @@ export default function Home() {
                             <p className="truncate text-[14px] font-semibold text-text-primary">
                               {formatSessionLabel(key)}
                             </p>
-                            <p className="text-[12px] tabular-nums text-text-tertiary">
-                              {count}권 점검
+                            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] tabular-nums text-text-tertiary">
+                              <span>{count}권 점검</span>
+                              {showBackupBadge && (
+                                backedUp ? (
+                                  <span className="inline-flex h-5 items-center gap-1 rounded-full bg-bg-input px-2 text-[11px] font-semibold text-text-tertiary">
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      className="h-3 w-3"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth={3}
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      aria-hidden
+                                    >
+                                      <path d="M5 12l5 5L20 7" />
+                                    </svg>
+                                    보냄
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex h-5 items-center gap-1 rounded-full bg-warning-bg px-2 text-[11px] font-semibold text-warning">
+                                    <span
+                                      aria-hidden
+                                      className="inline-block h-1.5 w-1.5 rounded-full bg-warning"
+                                    />
+                                    아직 안 보냄
+                                  </span>
+                                )
+                              )}
                             </p>
                           </div>
                           <ChevronRightIcon className="h-5 w-5 shrink-0 text-text-tertiary" />
@@ -652,7 +717,7 @@ export default function Home() {
               </div>
             </header>
 
-            {justFinishedSession && selectedCount > 0 && (
+            {justFinishedSession && selectedCount > 0 && !selectedBackedUp && (
               <div
                 role="status"
                 className="mb-3 rounded-xl bg-brand-subtle px-4 py-3 text-[13px] leading-relaxed text-brand-text"
