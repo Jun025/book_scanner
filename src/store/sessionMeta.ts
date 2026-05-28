@@ -12,8 +12,12 @@ export const META_STORAGE_PREFIX = "book-scanner:meta:";
 
 /** 향후 필드(공유 경로 등)를 더 넣을 수 있도록 JSON 객체로 보관. */
 export type SessionMeta = {
-  /** Date.now() — 0보다 크면 "한 번이라도 백업(복사·공유)됨"으로 해석한다. */
+  /** Date.now() — 0보다 크면 "한 번이라도 복사됨"으로 해석한다. */
   backedUpAt: number;
+  /** Date.now() — 0보다 크면 "휴지통(소프트 삭제)" 상태. 본문은 보존되며
+      복구(`restoreSession`)로 다시 활성 목록에 노출되거나, 영구 삭제
+      (`deleteSessionKey`)로 본문·메타가 함께 사라진다. */
+  deletedAt: number;
 };
 
 export function metaKeyForSessionKey(sessionKey: string): string {
@@ -27,14 +31,20 @@ export function readSessionMeta(sessionKey: string): SessionMeta | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as unknown;
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      typeof (parsed as { backedUpAt?: unknown }).backedUpAt === "number"
-    ) {
-      const at = (parsed as { backedUpAt: number }).backedUpAt;
-      if (at > 0) return { backedUpAt: at };
-    }
+    if (!parsed || typeof parsed !== "object") return null;
+    const obj = parsed as Record<string, unknown>;
+    /* 기존 스키마(backedUpAt만 있는 JSON)와의 하위 호환: 누락 필드는 0으로
+       해석한다. 두 필드 모두 0이면 의미 있는 메타가 없으므로 null 취급. */
+    const backedUpAt =
+      typeof obj.backedUpAt === "number" && obj.backedUpAt > 0
+        ? obj.backedUpAt
+        : 0;
+    const deletedAt =
+      typeof obj.deletedAt === "number" && obj.deletedAt > 0
+        ? obj.deletedAt
+        : 0;
+    if (backedUpAt === 0 && deletedAt === 0) return null;
+    return { backedUpAt, deletedAt };
   } catch {
     /* 손상된 JSON — 메타 없음으로 취급(안전한 기본값) */
   }
@@ -42,7 +52,11 @@ export function readSessionMeta(sessionKey: string): SessionMeta | null {
 }
 
 export function isSessionBackedUp(sessionKey: string): boolean {
-  return readSessionMeta(sessionKey) !== null;
+  return (readSessionMeta(sessionKey)?.backedUpAt ?? 0) > 0;
+}
+
+export function isSessionInTrash(sessionKey: string): boolean {
+  return (readSessionMeta(sessionKey)?.deletedAt ?? 0) > 0;
 }
 
 export function writeSessionMetaRaw(
@@ -58,9 +72,34 @@ export function writeSessionMetaRaw(
     return true;
   } catch {
     /* private mode / quota 초과 — 본문은 이미 저장되어 있으므로 안전.
-       백업 뱃지만 표시 못 할 뿐. */
+       백업 뱃지·휴지통 상태만 표시 못 할 뿐. */
     return false;
   }
+}
+
+/**
+ * 부분 필드만 갱신하고 나머지는 기존 값을 보존한다. 백업 마크와 휴지통
+ * 상태가 서로를 덮어쓰지 않도록 모든 store 액션은 이 함수만 사용해야 한다.
+ */
+export function mergeSessionMetaRaw(
+  sessionKey: string,
+  partial: Partial<SessionMeta>
+): boolean {
+  const current = readSessionMeta(sessionKey) ?? {
+    backedUpAt: 0,
+    deletedAt: 0,
+  };
+  const next: SessionMeta = {
+    backedUpAt: partial.backedUpAt ?? current.backedUpAt,
+    deletedAt: partial.deletedAt ?? current.deletedAt,
+  };
+  /* 두 필드 모두 0이면 메타가 사실상 의미 없으므로 키를 지우는 편이
+     orphan sweep과 enumeration 비용 측면에서 더 깔끔하다. */
+  if (next.backedUpAt === 0 && next.deletedAt === 0) {
+    deleteSessionMetaRaw(sessionKey);
+    return true;
+  }
+  return writeSessionMetaRaw(sessionKey, next);
 }
 
 export function deleteSessionMetaRaw(sessionKey: string): void {

@@ -2,8 +2,9 @@ import { create } from "zustand";
 import { countSessionLines } from "@/lib/sessionText";
 import {
   deleteSessionMetaRaw,
+  isSessionInTrash,
+  mergeSessionMetaRaw,
   removeOrphanMetaKeys,
-  writeSessionMetaRaw,
 } from "@/store/sessionMeta";
 
 const DIGIT_ONLY = /^\d+$/;
@@ -30,11 +31,16 @@ type ScannerState = {
   appendDigitScanToActiveSession: (raw: string) => boolean;
   bumpSessionsRevision: () => void;
   /**
-   * 세션을 "한 번이라도 복사·공유됨"으로 표시. 진행/상세 복사, 전체
-   * 내보내기에서 실제 성공한 직후 호출. localStorage 메타 write + revision
-   * 자동 bump로 목록 뱃지가 즉시 갱신된다.
+   * 세션을 "한 번이라도 복사됨"으로 표시. 진행 중·상세 복사가 실제 성공한
+   * 직후 호출. localStorage 메타 merge + revision 자동 bump로 목록 뱃지가
+   * 즉시 갱신된다. 기존 deletedAt 값은 보존(휴지통 상태 유지).
    */
   markSessionBackedUp: (sessionKey: string) => void;
+  /** 세션을 휴지통으로 보낸다(소프트 삭제). 본문은 보존, 메타에 deletedAt
+      만 기록. 목록에서는 사라지지만 휴지통 화면에서 복구·영구 삭제 가능. */
+  softDeleteSession: (sessionKey: string) => void;
+  /** 휴지통에서 활성 목록으로 되돌린다. 메타의 deletedAt만 0으로 초기화. */
+  restoreSession: (sessionKey: string) => void;
 };
 
 function normalizeDigits(raw: string): string | null {
@@ -87,7 +93,13 @@ export function deleteSessionKey(key: string): void {
   deleteSessionMetaRaw(key);
 }
 
-/** 비어 있는(바코드 줄 0건) 세션 키를 localStorage에서 제거. 메인 표시 직전에 호출. */
+/**
+ * 비어 있는(바코드 줄 0건) 세션 키를 localStorage에서 제거. 메인 표시 직전에 호출.
+ *
+ * 휴지통에 있는 세션(소프트 삭제됨)은 사용자가 의도적으로 보관 중인 상태
+ * 이므로 본 정리에서 건드리지 않는다 — 빈 휴지통 세션이 있더라도 휴지통
+ * UI에서 복구·영구 삭제하도록 두는 게 사용자 의도와 일치한다.
+ */
 export function removeSessionKeysWithZeroBarcodes(): void {
   if (typeof window === "undefined") return;
   const keys = listSessionStorageKeys();
@@ -95,6 +107,7 @@ export function removeSessionKeysWithZeroBarcodes(): void {
   let removedActive = false;
   let anyRemoved = false;
   for (const key of keys) {
+    if (isSessionInTrash(key)) continue;
     if (countSessionLines(readSessionRaw(key)) > 0) continue;
     deleteSessionKey(key);
     anyRemoved = true;
@@ -194,9 +207,21 @@ export const useScannerStore = create<ScannerState>((set, get) => ({
 
   markSessionBackedUp: (sessionKey) => {
     if (!sessionKey) return;
-    const ok = writeSessionMetaRaw(sessionKey, { backedUpAt: Date.now() });
+    const ok = mergeSessionMetaRaw(sessionKey, { backedUpAt: Date.now() });
     /* private mode 등으로 meta write가 실패해도 본문은 안전하므로 조용히
        지나간다. 성공한 경우에만 revision을 올려 목록 뱃지를 갱신. */
+    if (ok) get().bumpSessionsRevision();
+  },
+
+  softDeleteSession: (sessionKey) => {
+    if (!sessionKey) return;
+    const ok = mergeSessionMetaRaw(sessionKey, { deletedAt: Date.now() });
+    if (ok) get().bumpSessionsRevision();
+  },
+
+  restoreSession: (sessionKey) => {
+    if (!sessionKey) return;
+    const ok = mergeSessionMetaRaw(sessionKey, { deletedAt: 0 });
     if (ok) get().bumpSessionsRevision();
   },
 }));
